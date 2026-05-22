@@ -1,0 +1,137 @@
+import React, { useState } from 'react';
+import './styles/main.css';
+
+import Login from './pages/Login.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Customers from './pages/Customers.jsx';
+import Products from './pages/Products.jsx';
+import Leads from './pages/Leads.jsx';
+import Orders from './pages/Orders.jsx';
+import Payments from './pages/Payments.jsx';
+import Invoices from './pages/Invoices.jsx';
+
+function App() {
+  const savedUser = localStorage.getItem('crm_user');
+  const [user, setUser] = useState(savedUser ? JSON.parse(savedUser) : null);
+  const [page, setPage] = useState('Dashboard');
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (!user) {
+    return React.createElement(Login, { onLogin: setUser });
+  }
+
+  const pages = {
+    Dashboard: React.createElement(Dashboard),
+    Customers: React.createElement(Customers),
+    Products: React.createElement(Products),
+    Leads: React.createElement(Leads, { user }),
+    Orders: React.createElement(Orders),
+    Payments: React.createElement(Payments),
+    Invoices: React.createElement(Invoices)
+  };
+
+  const menu = [
+    { name: 'Dashboard', icon: '📊', badge: '' },
+    { name: 'Customers', icon: '👥', badge: '' },
+    { name: 'Products', icon: '🌱', badge: '24' },
+    { name: 'Leads', icon: '🎯', badge: '18' },
+    { name: 'Orders', icon: '🧾', badge: '' },
+    { name: 'Payments', icon: '💳', badge: '' },
+    { name: 'Invoices', icon: '📄', badge: '12' }
+  ];
+
+  return React.createElement(
+    'div',
+    { className: collapsed ? 'app sidebar-collapsed' : 'app' },
+
+    React.createElement(
+      'aside',
+      { className: 'sidebar pro-sidebar' },
+
+      React.createElement(
+        'div',
+        { className: 'brand-box' },
+        React.createElement('div', { className: 'brand-logo' }, 'K'),
+        !collapsed &&
+          React.createElement(
+            'div',
+            null,
+            React.createElement('h2', null, 'Kiambu CRM'),
+            React.createElement('p', null, 'Fertilizers Business OS')
+          )
+      ),
+
+      React.createElement(
+        'button',
+        { className: 'collapse-btn', onClick: () => setCollapsed(!collapsed) },
+        collapsed ? '☰' : '←'
+      ),
+
+      React.createElement(
+        'nav',
+        { className: 'sidebar-nav' },
+        menu.map(item =>
+          React.createElement(
+            'button',
+            {
+              key: item.name,
+              className: page === item.name ? 'nav-btn active' : 'nav-btn',
+              onClick: () => setPage(item.name),
+              title: item.name
+            },
+            React.createElement('span', { className: 'nav-icon' }, item.icon),
+            !collapsed && React.createElement('span', { className: 'nav-label' }, item.name),
+            !collapsed && item.badge && React.createElement('span', { className: 'nav-badge' }, item.badge)
+          )
+        )
+      ),
+
+      !collapsed &&
+        React.createElement(
+          'div',
+          { className: 'sidebar-card' },
+          React.createElement('small', null, 'Logged in as'),
+          React.createElement('strong', null, user.name),
+          React.createElement('span', null, user.role)
+        ),
+
+      !collapsed &&
+        React.createElement(
+          'div',
+          { className: 'sidebar-footer' },
+          React.createElement('div', { className: 'user-avatar' }, user.name.substring(0, 2).toUpperCase()),
+          React.createElement(
+            'div',
+            null,
+            React.createElement('strong', null, user.name),
+            React.createElement('small', null, 'Active user')
+          )
+        )
+    ),
+
+    React.createElement(
+      'main',
+      { className: 'main' },
+      React.createElement(
+        'div',
+        { className: 'topbar' },
+        React.createElement(
+          'div',
+          null,
+          React.createElement('h1', null, page),
+          React.createElement('p', null, 'Manage your business operations from one clean dashboard.')
+        ),
+        React.createElement(
+          'div',
+          { className: 'topbar-actions' },
+          React.createElement('span', { className: 'live-pill' }, '● Live'),
+          React.createElement('button', { className: 'topbar-btn' }, 'Export'),
+          React.createElement('button', { className: 'topbar-btn primary' }, '+ Quick Add')
+        )
+      ),
+      pages[page]
+    )
+  );
+}
+
+export default App;

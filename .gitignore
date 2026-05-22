@@ -1,0 +1,13 @@
+node_modules
+vendor
+.env
+.env.local
+storage/logs
+storage/framework
+bootstrap/cache
+frontend/node_modules
+frontend/dist
+backend-full/vendor
+backend-full/node_modules
+backend-full/storage/logs
+backend-full/storage/framework
