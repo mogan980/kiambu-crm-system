@@ -10,35 +10,52 @@ use Illuminate\Support\Facades\DB;
 
 $file = storage_path('app/kfcl_inventory_import.csv');
 
-if (!file_exists($file)) {
-    die("CSV not found: $file\n");
-}
-
 DB::table('products')->truncate();
 
 $rows = array_map('str_getcsv', file($file));
-$header = array_map('trim', array_shift($rows));
+$headers = array_map(fn($h) => strtolower(trim($h)), array_shift($rows));
 
 $count = 0;
+$totalStock = 0;
+$totalValue = 0;
 
 foreach ($rows as $row) {
-    if (count($row) !== count($header)) continue;
+    if (count($row) !== count($headers)) continue;
 
-    $data = array_combine($header, $row);
+    $data = array_combine($headers, $row);
+
+    $name = trim($data['name'] ?? $data['product'] ?? $data['product name'] ?? '');
+    if (!$name) continue;
+
+    $sku = trim($data['sku'] ?? 'KFCL-' . strtoupper(substr(md5($name), 0, 8)));
+    $category = trim($data['category'] ?? 'Agro-inputs');
+
+    $stockQty = (int) preg_replace('/[^0-9]/', '', 
+        $data['stock qty'] ?? $data['qty'] ?? $data['quantity'] ?? $data['stock'] ?? 0
+    );
+
+    $sellingPrice = (float) preg_replace('/[^0-9.]/', '', 
+        $data['selling price'] ?? $data['unit price'] ?? $data['price'] ?? 0
+    );
 
     Product::create([
-        'sku' => trim($data['sku'] ?? ''),
-        'name' => trim($data['name'] ?? ''),
-        'category' => trim($data['category'] ?? 'Agro-inputs'),
-        'price' => (float) preg_replace('/[^0-9.]/', '', $data['price'] ?? 0),
-        'stock' => (int) preg_replace('/[^0-9]/', '', $data['stock'] ?? 0),
-        'status' => ((int) preg_replace('/[^0-9]/', '', $data['stock'] ?? 0)) <= 10 ? 'Low Stock' : 'In Stock',
+        'sku' => $sku,
+        'name' => $name,
+        'category' => $category,
+        'stock_qty' => $stockQty,
+        'selling_price' => $sellingPrice,
+        'qty' => $stockQty,
+        'unit_price' => $sellingPrice,
+        'stock' => $stockQty,
+        'price' => $sellingPrice,
+        'status' => $stockQty <= 10 ? 'Low Stock' : 'In Stock',
     ]);
 
     $count++;
+    $totalStock += $stockQty;
+    $totalValue += ($sellingPrice * $stockQty);
 }
 
-echo "Clean re-import complete\n";
-echo "Products imported: $count\n";
-echo "Total stock: " . Product::sum('stock') . "\n";
-echo "Stock value: KES " . number_format(Product::sum(DB::raw('price * stock')), 2) . "\n";
+echo "Imported: $count\n";
+echo "Total Stock Qty: " . number_format($totalStock) . "\n";
+echo "Stock Value: KES " . number_format($totalValue, 2) . "\n";

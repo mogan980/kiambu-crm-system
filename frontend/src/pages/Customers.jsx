@@ -1,306 +1,258 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import React, { useMemo, useState } from 'react';
 
 export default function Customers() {
-  const emptyForm = {
-    name: '',
-    phone: '',
-    email: '',
-    county: '',
-    location: '',
-    customer_type: 'Farmer',
-    notes: ''
-  };
-
-  const [customers, setCustomers] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [page, setPage] = useState(1);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [receiptCustomer, setReceiptCustomer] = useState(null);
 
-  const loadCustomers = () => {
-    api.get('/customers')
-      .then(res => setCustomers(res.data.data || []))
-      .catch(err => console.log(err));
-  };
+  const perPage = 10;
 
-  useEffect(() => {
-    loadCustomers();
-  }, []);
+  const customers = [
+    ['CUST-001', 'John Kamau', '0700000001', 'john@email.com', 'Kiambu', 'Farmer', 'KES 5,000'],
+    ['CUST-002', 'Mary Njeri', '0700000002', 'mary@email.com', 'Nairobi', 'Retailer', 'KES 12,500'],
+    ['CUST-003', 'Agrovet Kiambu', '0700000003', 'sales@agrovet.co.ke', 'Kiambu', 'Agrovet', 'KES 32,000'],
+    ['CUST-004', 'Brian Mwangi', '0700000004', 'brian@email.com', 'Murang’a', 'Farmer', 'KES 8,200'],
+    ['CUST-005', 'Alice Njoroge', '0700000005', 'alice@email.com', 'Nakuru', 'Retailer', 'KES 6,700'],
+    ['CUST-006', 'James Kariuki', '0700000006', 'james@email.com', 'Nyeri', 'Farmer', 'KES 4,300'],
+    ['CUST-007', 'Grace Wanjiku', '0700000007', 'grace@email.com', 'Kiambu', 'Farmer', 'KES 9,800'],
+    ['CUST-008', 'Peter Otieno', '0700000008', 'peter@email.com', 'Kisumu', 'Retailer', 'KES 15,000'],
+    ['CUST-009', 'Faith Achieng', '0700000009', 'faith@email.com', 'Nairobi', 'Agrovet', 'KES 21,000'],
+    ['CUST-010', 'David Mutua', '0700000010', 'david@email.com', 'Machakos', 'Farmer', 'KES 3,900'],
+    ['CUST-011', 'Mercy Wambui', '0700000011', 'mercy@email.com', 'Kiambu', 'Retailer', 'KES 7,500'],
+    ['CUST-012', 'Simon Maina', '0700000012', 'simon@email.com', 'Nyandarua', 'Farmer', 'KES 11,400']
+  ];
 
-  const updateField = (field, value) => {
-    setForm({ ...form, [field]: value });
-  };
-
-  const saveCustomer = (e) => {
-    e.preventDefault();
-
-    const request = editingId
-      ? api.put('/customers/' + editingId, form)
-      : api.post('/customers', form);
-
-    request.then(() => {
-      setForm(emptyForm);
-      setEditingId(null);
-      setShowForm(false);
-      loadCustomers();
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(c => {
+      const text = c.join(' ').toLowerCase();
+      return text.includes(search.toLowerCase()) && (typeFilter === 'All' || c[5] === typeFilter);
     });
+  }, [search, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / perPage));
+  const paginatedCustomers = filteredCustomers.slice((page - 1) * perPage, page * perPage);
+
+  const printCustomer = (customer) => {
+    const html = `
+      <html>
+        <head>
+          <title>Customer Profile</title>
+          <style>
+            body { font-family: Arial; padding: 30px; }
+            h1 { color: #064e2b; }
+            .box { border: 1px solid #ddd; padding: 20px; border-radius: 12px; }
+            p { font-size: 15px; }
+          </style>
+        </head>
+        <body>
+          <h1>Customer Profile</h1>
+          <div class="box">
+            <p><b>ID:</b> ${customer[0]}</p>
+            <p><b>Name:</b> ${customer[1]}</p>
+            <p><b>Phone:</b> ${customer[2]}</p>
+            <p><b>Email:</b> ${customer[3]}</p>
+            <p><b>County:</b> ${customer[4]}</p>
+            <p><b>Type:</b> ${customer[5]}</p>
+            <p><b>Total Paid:</b> ${customer[6]}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.print();
   };
 
-  const editCustomer = (customer) => {
-    setEditingId(customer.id);
-    setShowForm(true);
-    setForm({
-      name: customer.name || '',
-      phone: customer.phone || '',
-      email: customer.email || '',
-      county: customer.county || '',
-      location: customer.location || '',
-      customer_type: customer.customer_type || 'Farmer',
-      notes: customer.notes || ''
-    });
+  const printReceipt = (customer) => {
+    const receiptNo = 'RCT-' + Date.now();
+
+    const html = `
+      <html>
+        <head>
+          <title>Payment Receipt</title>
+          <style>
+            body { font-family: Arial; padding: 30px; }
+            .receipt { max-width: 520px; margin: auto; border: 1px solid #ddd; padding: 28px; border-radius: 18px; }
+            h1 { color: #064e2b; margin-bottom: 4px; }
+            .muted { color: #666; }
+            .row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+            .total { font-size: 24px; color: #078144; font-weight: bold; }
+            .paid { background: #dcfce7; color: #166534; padding: 8px 12px; border-radius: 999px; display: inline-block; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <h1>Kiambu CRM</h1>
+            <p class="muted">Payment Receipt</p>
+            <p class="paid">PAID</p>
+            <div class="row"><b>Receipt No</b><span>${receiptNo}</span></div>
+            <div class="row"><b>Customer</b><span>${customer[1]}</span></div>
+            <div class="row"><b>Phone</b><span>${customer[2]}</span></div>
+            <div class="row"><b>Customer Type</b><span>${customer[5]}</span></div>
+            <div class="row"><b>Date</b><span>${new Date().toLocaleString()}</span></div>
+            <div class="row"><b>Amount Paid</b><span class="total">${customer[6]}</span></div>
+            <p class="muted">Thank you for your payment.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.print();
   };
 
-  const deleteCustomer = (id) => {
-    if (!confirm('Delete this customer?')) return;
-    api.delete('/customers/' + id).then(() => loadCustomers());
-  };
+  return (
+    <section>
+      <div className="page-header premium-header">
+        <div>
+          <h2>Customers</h2>
+          <p>Manage customer records, payment receipts and customer profiles.</p>
+        </div>
+      </div>
 
-  const closeForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setForm(emptyForm);
-  };
+      <div className="panel">
+        <div className="table-toolbar">
+          <div>
+            <h3>Customer List</h3>
+            <p>Search, filter, view, print and generate receipts after payment.</p>
+          </div>
 
-  const filteredCustomers = customers.filter(customer => {
-    const text = [
-      customer.name,
-      customer.phone,
-      customer.email,
-      customer.county,
-      customer.location,
-      customer.customer_type,
-      customer.notes
-    ].join(' ').toLowerCase();
+          <div className="toolbar-actions">
+            <input
+              className="search-input"
+              placeholder="Search customers..."
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
 
-    const matchesSearch = text.includes(search.toLowerCase());
-    const matchesFilter = filterType === 'All' || customer.customer_type === filterType;
+            <select
+              className="filter-select"
+              value={typeFilter}
+              onChange={e => {
+                setTypeFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option>All</option>
+              <option>Farmer</option>
+              <option>Retailer</option>
+              <option>Agrovet</option>
+            </select>
+          </div>
+        </div>
 
-    return matchesSearch && matchesFilter;
-  });
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Customer ID</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>County</th>
+              <th>Type</th>
+              <th>Total Paid</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
 
-  return React.createElement(
-    'section',
-    null,
+          <tbody>
+            {paginatedCustomers.map(c => (
+              <tr key={c[0]}>
+                <td><strong>{c[0]}</strong></td>
+                <td>{c[1]}</td>
+                <td>{c[2]}</td>
+                <td>{c[3]}</td>
+                <td>{c[4]}</td>
+                <td>{c[5]}</td>
+                <td>{c[6]}</td>
+                <td>
+                  <div className="customer-action-buttons">
+                    <button onClick={() => setSelectedCustomer(c)}>View</button>
+                    <button onClick={() => printCustomer(c)}>Print</button>
+                    <button className="receipt-btn" onClick={() => setReceiptCustomer(c)}>Receipt</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-    React.createElement(
-      'div',
-      { className: 'page-header customer-header' },
-      React.createElement(
-        'div',
-        null,
-        React.createElement('h2', null, 'Customers'),
-        React.createElement('p', null, 'Add, edit, delete, search and filter customer records.')
-      ),
-      React.createElement(
-        'button',
-        {
-          className: 'top-add-btn',
-          onClick: () => {
-            setEditingId(null);
-            setForm(emptyForm);
-            setShowForm(true);
-          }
-        },
-        '+ Add Customer'
-      )
-    ),
+        <div className="clean-pagination">
+          <span>
+            Showing {paginatedCustomers.length ? ((page - 1) * perPage) + 1 : 0}–
+            {Math.min(page * perPage, filteredCustomers.length)} of {filteredCustomers.length} customers
+          </span>
 
-    showForm &&
-      React.createElement(
-        'div',
-        { className: 'modal-overlay' },
-        React.createElement(
-          'div',
-          { className: 'customer-popup' },
-          React.createElement(
-            'div',
-            { className: 'popup-header' },
-            React.createElement('h3', null, editingId ? 'Edit Customer' : 'Add Customer'),
-            React.createElement('button', { className: 'close-btn', onClick: closeForm }, '×')
-          ),
+          <div className="pagination-controls">
+            <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+            <button className="page-number active">{page}</button>
+            <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>→</button>
+          </div>
+        </div>
+      </div>
 
-          React.createElement(
-            'form',
-            { className: 'popup-form', onSubmit: saveCustomer },
+      {selectedCustomer && (
+        <div className="modal-overlay">
+          <div className="customer-popup">
+            <div className="popup-header">
+              <h3>Customer Details</h3>
+              <button className="close-btn" onClick={() => setSelectedCustomer(null)}>×</button>
+            </div>
 
-            React.createElement('input', {
-              placeholder: 'Customer Name',
-              value: form.name,
-              onChange: e => updateField('name', e.target.value),
-              required: true
-            }),
+            <div className="customer-view-card">
+              <p><b>ID:</b> {selectedCustomer[0]}</p>
+              <p><b>Name:</b> {selectedCustomer[1]}</p>
+              <p><b>Phone:</b> {selectedCustomer[2]}</p>
+              <p><b>Email:</b> {selectedCustomer[3]}</p>
+              <p><b>County:</b> {selectedCustomer[4]}</p>
+              <p><b>Type:</b> {selectedCustomer[5]}</p>
+              <p><b>Total Paid:</b> {selectedCustomer[6]}</p>
+            </div>
 
-            React.createElement('input', {
-              placeholder: 'Phone',
-              value: form.phone,
-              onChange: e => updateField('phone', e.target.value)
-            }),
+            <div className="popup-actions">
+              <button className="secondary-btn" onClick={() => setSelectedCustomer(null)}>Close</button>
+              <button className="primary-btn" onClick={() => printCustomer(selectedCustomer)}>Print</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            React.createElement('input', {
-              placeholder: 'Email',
-              value: form.email,
-              onChange: e => updateField('email', e.target.value)
-            }),
+      {receiptCustomer && (
+        <div className="modal-overlay">
+          <div className="customer-popup receipt-popup">
+            <div className="popup-header">
+              <h3>Generate Receipt</h3>
+              <button className="close-btn" onClick={() => setReceiptCustomer(null)}>×</button>
+            </div>
 
-            React.createElement('input', {
-              placeholder: 'County',
-              value: form.county,
-              onChange: e => updateField('county', e.target.value)
-            }),
+            <div className="receipt-preview">
+              <h2>Kiambu CRM</h2>
+              <p>Payment Receipt</p>
+              <hr />
+              <p><b>Customer:</b> {receiptCustomer[1]}</p>
+              <p><b>Phone:</b> {receiptCustomer[2]}</p>
+              <p><b>Amount:</b> {receiptCustomer[6]}</p>
+              <p><b>Status:</b> Paid</p>
+              <p><b>Date:</b> {new Date().toLocaleString()}</p>
+            </div>
 
-            React.createElement('input', {
-              placeholder: 'Location',
-              value: form.location,
-              onChange: e => updateField('location', e.target.value)
-            }),
+            <div className="popup-actions">
+              <button className="secondary-btn" onClick={() => setReceiptCustomer(null)}>Cancel</button>
+              <button className="primary-btn" onClick={() => printReceipt(receiptCustomer)}>Print Receipt</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            React.createElement(
-              'select',
-              {
-                value: form.customer_type,
-                onChange: e => updateField('customer_type', e.target.value)
-              },
-              React.createElement('option', null, 'Farmer'),
-              React.createElement('option', null, 'Retail Customer'),
-              React.createElement('option', null, 'Wholesale Customer'),
-              React.createElement('option', null, 'Supplier')
-            ),
-
-            React.createElement('textarea', {
-              placeholder: 'Notes',
-              value: form.notes,
-              onChange: e => updateField('notes', e.target.value)
-            }),
-
-            React.createElement(
-              'div',
-              { className: 'popup-actions' },
-              React.createElement(
-                'button',
-                { type: 'button', className: 'secondary-btn', onClick: closeForm },
-                'Cancel'
-              ),
-              React.createElement(
-                'button',
-                { type: 'submit', className: 'primary-btn' },
-                editingId ? 'Update Customer' : 'Save Customer'
-              )
-            )
-          )
-        )
-      ),
-
-    React.createElement(
-      'div',
-      { className: 'panel' },
-
-      React.createElement(
-        'div',
-        { className: 'table-toolbar' },
-
-        React.createElement(
-          'div',
-          null,
-          React.createElement('h3', null, 'Customer List'),
-          React.createElement(
-            'p',
-            null,
-            'Search using name, phone, email, county, location, type or notes.'
-          )
-        ),
-
-        React.createElement(
-          'div',
-          { className: 'toolbar-actions' },
-
-          React.createElement('input', {
-            className: 'search-input',
-            placeholder: 'Search customer by any info...',
-            value: search,
-            onChange: e => setSearch(e.target.value)
-          }),
-
-          React.createElement(
-            'select',
-            {
-              className: 'filter-select',
-              value: filterType,
-              onChange: e => setFilterType(e.target.value)
-            },
-            React.createElement('option', null, 'All'),
-            React.createElement('option', null, 'Farmer'),
-            React.createElement('option', null, 'Retail Customer'),
-            React.createElement('option', null, 'Wholesale Customer'),
-            React.createElement('option', null, 'Supplier')
-          )
-        )
-      ),
-
-      React.createElement(
-        'table',
-        { className: 'data-table' },
-        React.createElement(
-          'thead',
-          null,
-          React.createElement(
-            'tr',
-            null,
-            React.createElement('th', null, 'Name'),
-            React.createElement('th', null, 'Phone'),
-            React.createElement('th', null, 'Email'),
-            React.createElement('th', null, 'County'),
-            React.createElement('th', null, 'Type'),
-            React.createElement('th', null, 'Actions')
-          )
-        ),
-        React.createElement(
-          'tbody',
-          null,
-          filteredCustomers.length === 0
-            ? React.createElement(
-                'tr',
-                null,
-                React.createElement('td', { colSpan: 6 }, 'No customers found.')
-              )
-            : filteredCustomers.map(customer =>
-                React.createElement(
-                  'tr',
-                  { key: customer.id },
-                  React.createElement('td', null, customer.name),
-                  React.createElement('td', null, customer.phone || '-'),
-                  React.createElement('td', null, customer.email || '-'),
-                  React.createElement('td', null, customer.county || '-'),
-                  React.createElement('td', null, customer.customer_type || '-'),
-                  React.createElement(
-                    'td',
-                    null,
-                    React.createElement(
-                      'button',
-                      { className: 'small-btn', onClick: () => editCustomer(customer) },
-                      'Edit'
-                    ),
-                    React.createElement(
-                      'button',
-                      { className: 'danger-btn', onClick: () => deleteCustomer(customer.id) },
-                      'Delete'
-                    )
-                  )
-                )
-              )
-        )
-      )
-    )
+    </section>
   );
 }

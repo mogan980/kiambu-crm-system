@@ -1,7 +1,4 @@
-import React, { useState } from 'react';
-import './styles/main.css';
-
-import Login from './pages/Login.jsx';
+import React, { useEffect, useState } from 'react';
 import Dashboard from './pages/Dashboard.jsx';
 import Customers from './pages/Customers.jsx';
 import Products from './pages/Products.jsx';
@@ -9,129 +6,129 @@ import Leads from './pages/Leads.jsx';
 import Orders from './pages/Orders.jsx';
 import Payments from './pages/Payments.jsx';
 import Invoices from './pages/Invoices.jsx';
+import Receipts from './pages/Receipts.jsx';
+import WhatsApp from './pages/WhatsApp.jsx';
+import Notifications from './pages/Notifications.jsx';
+import CompanySwitcher from './pages/CompanySwitcher.jsx';
+import Subscription from './pages/Subscription.jsx';
+import Settings from './pages/Settings.jsx';
+import './styles/main.css';
 
-function App() {
-  const savedUser = localStorage.getItem('crm_user');
-  const [user, setUser] = useState(savedUser ? JSON.parse(savedUser) : null);
-  const [page, setPage] = useState('Dashboard');
-  const [collapsed, setCollapsed] = useState(false);
+export default function App() {
+  const [page, setPageState] = useState(localStorage.getItem('crm_page') || 'Dashboard');
+  const [crmSettings, setCrmSettings] = useState(JSON.parse(localStorage.getItem('crm_settings') || '{}'));
 
-  if (!user) {
-    return React.createElement(Login, { onLogin: setUser });
-  }
+  useEffect(() => {
+    const reloadSettings = () => setCrmSettings(JSON.parse(localStorage.getItem('crm_settings') || '{}'));
+    window.addEventListener('crmSettingsUpdated', reloadSettings);
+    return () => window.removeEventListener('crmSettingsUpdated', reloadSettings);
+  }, []);
 
-  const pages = {
-    Dashboard: React.createElement(Dashboard),
-    Customers: React.createElement(Customers),
-    Products: React.createElement(Products),
-    Leads: React.createElement(Leads, { user }),
-    Orders: React.createElement(Orders),
-    Payments: React.createElement(Payments),
-    Invoices: React.createElement(Invoices)
+  const setPage = (name) => {
+    localStorage.setItem('crm_page', name);
+    setPageState(name);
   };
 
-  const menu = [
-    { name: 'Dashboard', icon: '📊', badge: '' },
-    { name: 'Customers', icon: '👥', badge: '' },
-    { name: 'Products', icon: '🌱', badge: '24' },
-    { name: 'Leads', icon: '🎯', badge: '18' },
-    { name: 'Orders', icon: '🧾', badge: '' },
-    { name: 'Payments', icon: '💳', badge: '' },
-    { name: 'Invoices', icon: '📄', badge: '12' }
+  const pages = {
+    Dashboard: <Dashboard />,
+    Customers: <Customers />,
+    Products: <Products />,
+    Leads: <Leads />,
+    Orders: <Orders />,
+    Payments: <Payments />,
+    Invoices: <Invoices />,
+    Receipts: <Receipts />,
+    WhatsApp: <WhatsApp />,
+    Notifications: <Notifications />,
+    Companies: <CompanySwitcher />,
+    Subscription: <Subscription />,
+    Settings: <Settings />
+  };
+
+  const groups = [
+    {
+      title: 'Main',
+      items: [
+        ['Dashboard', '📊', ''],
+        ['Customers', '👥', ''],
+        ['Products', '🌱', '24']
+      ]
+    },
+    {
+      title: 'Sales',
+      items: [
+        ['Leads', '🎯', '18'],
+        ['Orders', '🧾', ''],
+        ['Payments', '💳', ''],
+        ['Invoices', '📄', '12'],
+        ['Receipts', '🧾', '']
+      ]
+    },
+    {
+      title: 'Communication',
+      items: [
+        ['WhatsApp', '💬', '5'],
+        ['Notifications', '🔔', '5']
+      ]
+    },
+    {
+      title: 'Business',
+      items: [
+        ['Companies', '🏢', ''],
+        ['Subscription', '💎', ''],
+        ['Settings', '⚙️', '']
+      ]
+    }
   ];
 
-  return React.createElement(
-    'div',
-    { className: collapsed ? 'app sidebar-collapsed' : 'app' },
+  return (
+    <div className="crm-shell">
+      <aside className="pro-sidebar">
+        <div className="brand-card">
+          {crmSettings.logo ? (
+            <img className="brand-logo-img" src={crmSettings.logo} alt="Logo" />
+          ) : (
+            <div className="brand-logo">K</div>
+          )}
+          <div>
+            <h2>{crmSettings.companyName || 'Kiambu CRM'}</h2>
+            <p>{crmSettings.companySubtitle || 'Fertilizers Business OS'}</p>
+          </div>
+        </div>
 
-    React.createElement(
-      'aside',
-      { className: 'sidebar pro-sidebar' },
+        <nav className="sidebar-nav">
+          {groups.map(group => (
+            <div className="nav-group" key={group.title}>
+              <span className="nav-group-title">{group.title}</span>
 
-      React.createElement(
-        'div',
-        { className: 'brand-box' },
-        React.createElement('div', { className: 'brand-logo' }, 'K'),
-        !collapsed &&
-          React.createElement(
-            'div',
-            null,
-            React.createElement('h2', null, 'Kiambu CRM'),
-            React.createElement('p', null, 'Fertilizers Business OS')
-          )
-      ),
+              {group.items.map(([name, icon, badge]) => (
+                <button
+                  key={name}
+                  className={page === name ? 'nav-link active' : 'nav-link'}
+                  onClick={() => setPage(name)}
+                >
+                  <span className="nav-icon">{icon}</span>
+                  <span>{name}</span>
+                  {badge && <b>{badge}</b>}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
 
-      React.createElement(
-        'button',
-        { className: 'collapse-btn', onClick: () => setCollapsed(!collapsed) },
-        collapsed ? '☰' : '←'
-      ),
+        <div className="user-card-clean">
+          <div className="user-avatar">AD</div>
+          <div>
+            <small>Logged in as</small>
+            <strong>Admin</strong>
+            <p>Active user</p>
+          </div>
+        </div>
+      </aside>
 
-      React.createElement(
-        'nav',
-        { className: 'sidebar-nav' },
-        menu.map(item =>
-          React.createElement(
-            'button',
-            {
-              key: item.name,
-              className: page === item.name ? 'nav-btn active' : 'nav-btn',
-              onClick: () => setPage(item.name),
-              title: item.name
-            },
-            React.createElement('span', { className: 'nav-icon' }, item.icon),
-            !collapsed && React.createElement('span', { className: 'nav-label' }, item.name),
-            !collapsed && item.badge && React.createElement('span', { className: 'nav-badge' }, item.badge)
-          )
-        )
-      ),
-
-      !collapsed &&
-        React.createElement(
-          'div',
-          { className: 'sidebar-card' },
-          React.createElement('small', null, 'Logged in as'),
-          React.createElement('strong', null, user.name),
-          React.createElement('span', null, user.role)
-        ),
-
-      !collapsed &&
-        React.createElement(
-          'div',
-          { className: 'sidebar-footer' },
-          React.createElement('div', { className: 'user-avatar' }, user.name.substring(0, 2).toUpperCase()),
-          React.createElement(
-            'div',
-            null,
-            React.createElement('strong', null, user.name),
-            React.createElement('small', null, 'Active user')
-          )
-        )
-    ),
-
-    React.createElement(
-      'main',
-      { className: 'main' },
-      React.createElement(
-        'div',
-        { className: 'topbar' },
-        React.createElement(
-          'div',
-          null,
-          React.createElement('h1', null, page),
-          React.createElement('p', null, 'Manage your business operations from one clean dashboard.')
-        ),
-        React.createElement(
-          'div',
-          { className: 'topbar-actions' },
-          React.createElement('span', { className: 'live-pill' }, '● Live'),
-          React.createElement('button', { className: 'topbar-btn' }, 'Export'),
-          React.createElement('button', { className: 'topbar-btn primary' }, '+ Quick Add')
-        )
-      ),
-      pages[page]
-    )
+      <main className="crm-main">
+        {pages[page] || <Dashboard />}
+      </main>
+    </div>
   );
 }
-
-export default App;
