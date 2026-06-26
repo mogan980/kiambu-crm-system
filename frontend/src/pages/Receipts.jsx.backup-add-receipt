@@ -6,25 +6,6 @@ export default function Receipts() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const [showAddReceipt, setShowAddReceipt] = useState(false);
-  const [receiptList, setReceiptList] = useState(() => {
-    return JSON.parse(localStorage.getItem('crm_receipts') || 'null') || receipts;
-  });
-
-  const [newReceipt, setNewReceipt] = useState({
-    invoiceNo: '',
-    customer: '',
-    email: '',
-    phone: '',
-    address: '',
-    product: '',
-    qty: 1,
-    unitPrice: '',
-    vatRate: 16,
-    status: 'Paid',
-    date: new Date().toISOString().slice(0, 10),
-    paymentMethod: 'M-PESA'
-  });
   const perPage = 10;
 
   const receipts = [
@@ -34,11 +15,11 @@ export default function Receipts() {
   ];
 
   const filtered = useMemo(() => {
-    return receiptList.filter(r => {
+    return receipts.filter(r => {
       const text = r.join(' ').toLowerCase();
       return text.includes(search.toLowerCase()) && (statusFilter === 'All' || r[5] === statusFilter);
     });
-  }, [receiptList, search, statusFilter]);
+  }, [search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
@@ -440,59 +421,6 @@ export default function Receipts() {
     }, 500);
   };
 
-  const saveReceipt = () => {
-    if (!newReceipt.invoiceNo || !newReceipt.customer || !newReceipt.email || !newReceipt.product || !newReceipt.unitPrice) {
-      alert('Fill invoice number, customer, email, product and unit price');
-      return;
-    }
-
-    const qty = Number(newReceipt.qty || 1);
-    const unitPrice = Number(newReceipt.unitPrice || 0);
-    const vatRate = Number(newReceipt.vatRate || 16);
-    const subtotal = qty * unitPrice;
-    const vat = Math.round(subtotal * (vatRate / 100));
-    const total = subtotal + vat;
-
-    const receipt = [
-      `RCT-${String(receiptList.length + 1).padStart(3, '0')}`,
-      newReceipt.invoiceNo,
-      newReceipt.customer,
-      newReceipt.email,
-      `KES ${total.toLocaleString()}`,
-      newReceipt.status,
-      newReceipt.date,
-      newReceipt.phone,
-      newReceipt.address,
-      newReceipt.product,
-      qty,
-      unitPrice,
-      vatRate,
-      newReceipt.paymentMethod
-    ];
-
-    const updated = [receipt, ...receiptList];
-    setReceiptList(updated);
-    localStorage.setItem('crm_receipts', JSON.stringify(updated));
-
-    setShowAddReceipt(false);
-    setNewReceipt({
-      invoiceNo: '',
-      customer: '',
-      email: '',
-      phone: '',
-      address: '',
-      product: '',
-      qty: 1,
-      unitPrice: '',
-      vatRate: 16,
-      status: 'Paid',
-      date: new Date().toISOString().slice(0, 10),
-      paymentMethod: 'M-PESA'
-    });
-
-    alert('Receipt added successfully');
-  };
-
   const sendReceipt = (r) => {
     const subject = `Payment Receipt ${r[0]}`;
     const body = `Hello ${r[2]},%0D%0A%0D%0AThank you for your payment.%0D%0AReceipt: ${r[0]}%0D%0AInvoice: ${r[1]}%0D%0AAmount: ${r[4]}%0D%0AStatus: ${r[5]}%0D%0A%0D%0AKiambu Fertilizers Company Limited`;
@@ -506,10 +434,6 @@ export default function Receipts() {
           <h2>Receipts</h2>
           <p>Receipts are only available for paid records.</p>
         </div>
-
-        <button className="green-btn" onClick={() => setShowAddReceipt(true)}>
-          + Add Receipt
-        </button>
       </div>
 
       <div className="panel">
@@ -563,9 +487,7 @@ export default function Receipts() {
                   </div>
                 </td>
 
-                <td>
-                  <strong className="receipt-amount-cell">{r[4]}</strong>
-                </td>
+                <td><strong>{r[4]}</strong></td>
 
                 <td>
                   <span className={r[5] === 'Paid' ? 'status success' : 'status warning'}>
@@ -632,97 +554,6 @@ export default function Receipts() {
           </div>
         </div>
       </div>
-      {showAddReceipt && (
-        <div className="modal-overlay">
-          <div className="customer-popup invoice-wide-popup">
-            <div className="popup-header">
-              <h3>Add Receipt</h3>
-              <button className="close-btn" onClick={() => setShowAddReceipt(false)}>×</button>
-            </div>
-
-            <form className="popup-form invoice-modern-form">
-              <div className="invoice-form-section">
-                <h4>Receipt Reference</h4>
-
-                <label>Invoice Number</label>
-                <input placeholder="e.g INV-005" value={newReceipt.invoiceNo} onChange={e => setNewReceipt({...newReceipt, invoiceNo:e.target.value})} />
-
-                <label>Receipt Date</label>
-                <input type="date" value={newReceipt.date} onChange={e => setNewReceipt({...newReceipt, date:e.target.value})} />
-
-                <label>Receipt Status</label>
-                <select value={newReceipt.status} onChange={e => setNewReceipt({...newReceipt, status:e.target.value})}>
-                  <option>Paid</option>
-                  <option>Pending</option>
-                  <option>Cancelled</option>
-                </select>
-
-                <label>Payment Method</label>
-                <select value={newReceipt.paymentMethod} onChange={e => setNewReceipt({...newReceipt, paymentMethod:e.target.value})}>
-                  <option>M-PESA</option>
-                  <option>Cash</option>
-                  <option>Bank Transfer</option>
-                  <option>Card</option>
-                  <option>Cheque</option>
-                </select>
-              </div>
-
-              <div className="invoice-form-section">
-                <h4>Customer Details</h4>
-
-                <label>Customer Name</label>
-                <input placeholder="Customer full name" value={newReceipt.customer} onChange={e => setNewReceipt({...newReceipt, customer:e.target.value})} />
-
-                <label>Customer Email</label>
-                <input placeholder="customer@email.com" value={newReceipt.email} onChange={e => setNewReceipt({...newReceipt, email:e.target.value})} />
-
-                <label>Phone Number</label>
-                <input placeholder="07..." value={newReceipt.phone} onChange={e => setNewReceipt({...newReceipt, phone:e.target.value})} />
-
-                <label>Address / County</label>
-                <input placeholder="Kiambu, Kenya" value={newReceipt.address} onChange={e => setNewReceipt({...newReceipt, address:e.target.value})} />
-              </div>
-
-              <div className="invoice-form-section">
-                <h4>Product & Pricing</h4>
-
-                <label>Product / Service</label>
-                <input placeholder="e.g DAP Fertilizer 50KG" value={newReceipt.product} onChange={e => setNewReceipt({...newReceipt, product:e.target.value})} />
-
-                <label>Quantity</label>
-                <input type="number" placeholder="Qty" value={newReceipt.qty} onChange={e => setNewReceipt({...newReceipt, qty:e.target.value})} />
-
-                <label>Unit Price</label>
-                <input type="number" placeholder="Unit price before VAT" value={newReceipt.unitPrice} onChange={e => setNewReceipt({...newReceipt, unitPrice:e.target.value})} />
-
-                <label>VAT Rate %</label>
-                <input type="number" placeholder="16" value={newReceipt.vatRate} onChange={e => setNewReceipt({...newReceipt, vatRate:e.target.value})} />
-              </div>
-
-              <div className="invoice-total-preview">
-                <div>
-                  <span>Subtotal</span>
-                  <b>KES {(Number(newReceipt.qty || 0) * Number(newReceipt.unitPrice || 0)).toLocaleString()}</b>
-                </div>
-                <div>
-                  <span>VAT {newReceipt.vatRate}%</span>
-                  <b>KES {Math.round((Number(newReceipt.qty || 0) * Number(newReceipt.unitPrice || 0)) * (Number(newReceipt.vatRate || 0) / 100)).toLocaleString()}</b>
-                </div>
-                <div className="grand">
-                  <span>Total Paid</span>
-                  <b>KES {((Number(newReceipt.qty || 0) * Number(newReceipt.unitPrice || 0)) + Math.round((Number(newReceipt.qty || 0) * Number(newReceipt.unitPrice || 0)) * (Number(newReceipt.vatRate || 0) / 100))).toLocaleString()}</b>
-                </div>
-              </div>
-
-              <div className="popup-actions">
-                <button type="button" className="secondary-btn" onClick={() => setShowAddReceipt(false)}>Cancel</button>
-                <button type="button" className="primary-btn" onClick={saveReceipt}>Save Receipt</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {selectedReceipt && (
         <div className="modal-overlay">
           <div className="customer-popup">

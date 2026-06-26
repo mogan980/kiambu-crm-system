@@ -1,77 +1,88 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import api from '../services/api';
+import kiambuLogo from '../assets/kiambu-logo.jpeg';
+import React from 'react';
 
 export default function Dashboard() {
+  const crmUser = JSON.parse(localStorage.getItem('crm_user') || '{}');
+  const fullName = crmUser.name || 'Admin';
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning' :
+    hour < 17 ? 'Good afternoon' :
+    hour < 21 ? 'Good evening' :
+    'Good night';
+
   const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 51 }, (_, i) => currentYear - 50 + i);
+  const [selectedYear, setSelectedYear] = React.useState(currentYear);
+  const [selectedQuarter, setSelectedQuarter] = React.useState('Q1');
 
-  const years = [];
-  for (let y = 1940; y <= currentYear; y++) {
-    years.push(y);
-  }
+  const quarterMultiplier = {
+    Q1: 1,
+    Q2: 1.18,
+    Q3: 1.34,
+    Q4: 1.56
+  }[selectedQuarter];
 
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedQuarter, setSelectedQuarter] = useState('Q1');
-  const [showReport, setShowReport] = useState(false);
-  const [productStats, setProductStats] = useState({});
+  const yearGrowth = 1 + ((selectedYear - (currentYear - 50)) * 0.012);
 
-  useEffect(() => {
-    api.get('/products/stats')
-      .then(res => setProductStats(res.data || {}))
-      .catch(() => setProductStats({}));
-  }, []);
+  const filteredData = {
+    sales: Math.round(245000 * quarterMultiplier * yearGrowth),
+    customers: Math.round(156 * quarterMultiplier),
+    invoices: Math.round(24 * quarterMultiplier),
+    payments: Math.round(189500 * quarterMultiplier * yearGrowth)
+  };
 
-  const quarterData = useMemo(() => {
-    const yearFactor = Math.max(1, selectedYear - 1939);
-    const quarterFactor = selectedQuarter === 'Q1' ? 1 : selectedQuarter === 'Q2' ? 1.25 : selectedQuarter === 'Q3' ? 1.55 : 1.85;
+  const chartData = [
+    { month: 'Jan', value: Math.round(22 * quarterMultiplier) },
+    { month: 'Feb', value: Math.round(35 * quarterMultiplier) },
+    { month: 'Mar', value: Math.round(50 * quarterMultiplier) },
+    { month: 'Apr', value: Math.round(72 * quarterMultiplier) },
+    { month: 'May', value: Math.round(95 * quarterMultiplier) }
+  ];
 
-    return {
-      customers: Math.round(120 + yearFactor * quarterFactor),
-      products: Number(productStats.total_products || 0),
-      stockValue: Number(productStats.stock_value || 0),
-      revenue: Math.round(45000 * quarterFactor + yearFactor * 1500),
-      leads: Math.round(18 * quarterFactor + yearFactor / 2),
-      lowStock: Number(productStats.low_stock || 0),
-      conversion: Math.round(18 + quarterFactor * 7),
-      orders: Math.round(12 * quarterFactor + yearFactor / 3),
-      period: selectedYear + ' ' + selectedQuarter
-    };
-  }, [selectedYear, selectedQuarter]);
+  const viewReport = () => {
+    alert(`Dashboard Report\\nYear: ${selectedYear}\\nQuarter: ${selectedQuarter}\\nSales: KES ${filteredData.sales.toLocaleString()}\\nCustomers: ${filteredData.customers}\\nInvoices: ${filteredData.invoices}\\nPayments: KES ${filteredData.payments.toLocaleString()}`);
+  };
 
+  const printBarGraphReport = () => {
+    const rows = chartData.map(d => `<tr><td>${d.month}</td><td>${d.value}%</td></tr>`).join('');
 
-  const printReport = () => {
     const html = `
       <html>
         <head>
-          <title>Sales Report - ${quarterData.period}</title>
+          <title>Sales Overview Report</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 30px; background: #f6faf6; }
-            .report { max-width: 760px; margin: auto; background: white; border: 1px solid #dce8d7; border-radius: 18px; padding: 30px; }
-            h1 { color: #064e2b; margin-bottom: 4px; }
-            .muted { color: #66746a; margin-bottom: 24px; }
-            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-            .card { border: 1px solid #dce8d7; border-radius: 14px; padding: 16px; }
-            .card span { color: #66746a; font-size: 13px; }
-            .card h2 { color: #078144; margin: 8px 0 0; }
-            .footer { margin-top: 24px; color: #66746a; font-size: 13px; }
+            .doc-logo{width:120px;height:120px;object-fit:contain;border-radius:24px;margin-bottom:12px;} body{font-family:Arial;padding:30px;background:#f7fbf6}
+            .report{max-width:760px;margin:auto;background:white;border:1px solid #dce8d7;border-radius:18px;padding:28px}
+            h1{color:#185c22;margin:0}
+            p{color:#66746a}
+            table{width:100%;border-collapse:collapse;margin-top:20px}
+            th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left}
+            th{background:#eef6ec;color:#185c22}
+            .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+            .card{border:1px solid #dce8d7;border-radius:14px;padding:14px}
+            .card b{color:#078144;font-size:20px}
           </style>
         </head>
         <body>
           <div class="report">
-            <h1>Sales Performance Report</h1>
-            <p class="muted">Period: ${quarterData.period}</p>
+            <h1>Sales Overview Report</h1>
+            <p>Period: ${selectedYear} ${selectedQuarter}</p>
 
-            <div class="grid">
-              <div class="card"><span>Total Customers</span><h2>${quarterData.customers.toLocaleString()}</h2></div>
-              <div class="card"><span>Total Leads</span><h2>${quarterData.leads.toLocaleString()}</h2></div>
-              <div class="card"><span>Revenue</span><h2>KES ${quarterData.revenue.toLocaleString()}</h2></div>
-              <div class="card"><span>Orders</span><h2>${quarterData.orders.toLocaleString()}</h2></div>
-              <div class="card"><span>Products</span><h2>${quarterData.products.toLocaleString()}</h2></div>
-              <div class="card"><span>Stock Value</span><h2>KES ${Number(quarterData.stockValue || 0).toLocaleString()}</h2></div>
-              <div class="card"><span>Low Stock</span><h2>${quarterData.lowStock}</h2></div>
-              <div class="card"><span>Conversion Rate</span><h2>${quarterData.conversion}%</h2></div>
+            <div class="summary">
+              <div class="card">Sales<br><b>KES ${filteredData.sales.toLocaleString()}</b></div>
+              <div class="card">Customers<br><b>${filteredData.customers.toLocaleString()}</b></div>
+              <div class="card">Invoices<br><b>${filteredData.invoices.toLocaleString()}</b></div>
+              <div class="card">Payments<br><b>KES ${filteredData.payments.toLocaleString()}</b></div>
             </div>
 
-            <p class="footer">Generated by Kiambu CRM on ${new Date().toLocaleString()}</p>
+            <table>
+              <thead><tr><th>Month</th><th>Bar Graph Value</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+
+            <p>Generated on ${new Date().toLocaleString()}</p>
           </div>
         </body>
       </html>
@@ -82,123 +93,121 @@ export default function Dashboard() {
     win.document.close();
     win.print();
   };
+  const invoices = [
+    ['INV-00124', 'John Kamau', 'KES 5,000', '2026-05-18', 'Paid'],
+    ['INV-00123', 'Mary Njeri', 'KES 1,750', '2026-05-18', 'Pending'],
+    ['INV-00122', 'Agrovet Kiambu', 'KES 32,000', '2026-05-17', 'Overdue'],
+    ['INV-00121', 'Brian Mwangi', 'KES 8,500', '2026-05-16', 'Paid']
+  ];
+
+  const products = [
+    ['DAP Fertilizer 50KG', 'KES 72,500', '320 bags'],
+    ['CAN 26% Fertilizer 50KG', 'KES 58,000', '250 bags'],
+    ['NPK 17:17:17 50KG', 'KES 46,000', '200 bags'],
+    ['Urea Fertilizer 50KG', 'KES 38,000', '180 bags']
+  ];
 
   return (
-    <section className="modern-dashboard">
+    <section className="kf-dashboard">
 
-      <div className="dashboard-topbar">
+      <div className="kf-topbar">
         <div>
-          <span className="dash-tag">CRM BUSINESS INTELLIGENCE</span>
-          <h1>Executive CRM Dashboard</h1>
-          <p>Filtered view for {quarterData.period}. Track customers, leads, inventory, sales and CRM operations.</p>
-        </div>
-
-        <div className="dashboard-filters pro-filter-box">
-          <div>
-            <label>Year</label>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
-              {years.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label>Quarter</label>
-            <select value={selectedQuarter} onChange={(e) => setSelectedQuarter(e.target.value)}>
-              <option>Q1</option>
-              <option>Q2</option>
-              <option>Q3</option>
-              <option>Q4</option>
-            </select>
-          </div>
+          <h1>{greeting}, {fullName} 👋</h1>
+          <p>Here’s what’s happening with your business today.</p>
         </div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-icon">👥</div><span>Total Customers</span><h2>{quarterData.customers.toLocaleString()}</h2><small>{quarterData.period} filtered</small></div>
-        <div className="stat-card"><div className="stat-icon">🎯</div><span>Total Leads</span><h2>{quarterData.leads.toLocaleString()}</h2><small>{quarterData.conversion}% conversion estimate</small></div>
-        <div className="stat-card"><div className="stat-icon">🌱</div><span>Products</span><h2>{quarterData.products.toLocaleString()}</h2><small>Inventory connected</small></div>
-        <div className="stat-card"><div className="stat-icon">💰</div><span>Stock Value</span><h2>KES {quarterData.stockValue.toLocaleString()}</h2><small>Live inventory value</small></div>
-        <div className="stat-card"><div className="stat-icon">📈</div><span>Revenue</span><h2>KES {quarterData.revenue.toLocaleString()}</h2><small>{quarterData.period} sales</small></div>
-        <div className="stat-card"><div className="stat-icon">⚠️</div><span>Low Stock</span><h2>{quarterData.lowStock}</h2><small>Needs restocking</small></div>
-        <div className="stat-card"><div className="stat-icon">🧾</div><span>Pending Orders</span><h2>{quarterData.orders}</h2><small>Awaiting processing</small></div>
-        <div className="stat-card"><div className="stat-icon">💳</div><span>Payments Collected</span><h2>KES {(quarterData.revenue * 0.72).toLocaleString()}</h2><small>72% collection rate</small></div>
+      <div className="dashboard-filter-bar">
+        <div>
+          <strong>Performance Filter</strong>
+          <span>Viewing dashboard data for {selectedYear} · {selectedQuarter}</span>
+        </div>
+
+        <div className="dashboard-filter-controls">
+          <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+            {years.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+
+          <select value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)}>
+            <option>Q1</option>
+            <option>Q2</option>
+            <option>Q3</option>
+            <option>Q4</option>
+          </select>
+
+          <input
+            type="date"
+            value={`${selectedYear}-01-01`}
+            onChange={e => setSelectedYear(new Date(e.target.value).getFullYear())}
+          />
+        </div>
       </div>
 
-      <div className="dashboard-main-grid">
+      <div className="kf-kpi-grid">
+        <div className="kf-kpi"><p>Total Sales</p><h2>KES {filteredData.sales.toLocaleString()}</h2><span>↗ +18% from last month</span></div>
+        <div className="kf-kpi"><p>Total Customers</p><h2>{filteredData.customers.toLocaleString()}</h2><span>↗ +12 new this month</span></div>
+        <div className="kf-kpi"><p>Total Invoices</p><h2>{filteredData.invoices.toLocaleString()}</h2><span>↗ +8% from last month</span></div>
+        <div className="kf-kpi"><p>Total Payments</p><h2>KES {filteredData.payments.toLocaleString()}</h2><span>↗ +15% from last month</span></div>
+      </div>
 
-        <div className="dashboard-panel large-panel">
-          <div className="panel-head">
-            <h3>Sales Trend — {quarterData.period}</h3>
-            <button onClick={() => setShowReport(true)}>View Report</button>
-          </div>
-
-          <div className="sales-chart-ui">
-            {[45, 62, 74, 58, 86, 72, 95].map((height, index) => (
-              <div className="bar" key={index} style={{height: (height * (selectedQuarter === 'Q4' ? 1 : selectedQuarter === 'Q3' ? .9 : selectedQuarter === 'Q2' ? .8 : .7)) + '%'}}></div>
+      <div className="kf-main-grid">
+        <div className="kf-card large">
+          <h3>🌿 Sales Overview — {selectedYear} {selectedQuarter}</h3>
+          <div className="kf-chart">
+            {chartData.map(item => (
+              <div key={item.month} style={{height: `${item.value}%`}} title={`${item.month}: ${item.value}%`}></div>
             ))}
           </div>
-        </div>
 
-        <div className="dashboard-panel">
-          <div className="panel-head"><h3>Lead Funnel</h3></div>
-          <div className="funnel-ui">
-            <div style={{width:'100%'}}>New: {quarterData.leads}</div>
-            <div style={{width:'80%'}}>Contacted: {Math.round(quarterData.leads * .75)}</div>
-            <div style={{width:'60%'}}>Qualified: {Math.round(quarterData.leads * .48)}</div>
-            <div style={{width:'40%'}}>Converted: {Math.round(quarterData.leads * .25)}</div>
+          <div className="kf-months">
+            {chartData.map(item => <span key={item.month}>{item.month}</span>)}
+          </div>
+
+          <div className="chart-actions">
+            <button onClick={printBarGraphReport}>Print</button>
           </div>
         </div>
 
-        <div className="dashboard-panel">
-          <div className="panel-head"><h3>Inventory Health</h3></div>
-          <div className="inventory-list">
-            <div><span>Products</span><b>{quarterData.products.toLocaleString()}</b></div>
-            <div><span>Low Stock</span><b>{quarterData.lowStock}</b></div>
-            <div><span>Categories</span><b>5</b></div>
-            <div><span>Stock Value</span><b>KES {quarterData.stockValue.toLocaleString()}</b></div>
-          </div>
+        <div className="kf-card">
+          <h3>🌿 Top Selling Products</h3>
+          {products.map((p,i) => (
+            <div className="kf-product-row" key={i}>
+              <div className="kf-bag">🌾</div>
+              <strong>{p[0]}</strong>
+              <div><b>{p[1]}</b><span>{p[2]}</span></div>
+            </div>
+          ))}
         </div>
 
-        <div className="dashboard-panel large-panel">
-          <div className="panel-head"><h3>Filtered CRM Activity</h3></div>
-          <div className="activity-feed">
-            <div className="activity-item"><div className="activity-dot"></div><div><strong>{quarterData.period} performance loaded</strong><p>Dashboard now reflects the selected year and quarter.</p></div><small>Now</small></div>
-            <div className="activity-item"><div className="activity-dot"></div><div><strong>{quarterData.orders} orders tracked</strong><p>Sales activity calculated for the selected period.</p></div><small>{quarterData.period}</small></div>
-            <div className="activity-item"><div className="activity-dot"></div><div><strong>{quarterData.leads} leads visible</strong><p>Lead funnel updated based on selected quarter.</p></div><small>{quarterData.period}</small></div>
-          </div>
+        <div className="kf-card">
+          <h3>🧾 Recent Invoices</h3>
+          <table className="kf-mini-table">
+            <thead><tr><th>Invoice</th><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              {invoices.map(inv => (
+                <tr key={inv[0]}>
+                  <td>{inv[0]}</td><td>{inv[1]}</td><td>{inv[2]}</td>
+                  <td><span className={'kf-status ' + inv[4].toLowerCase()}>{inv[4]}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
+        <div className="kf-card">
+          <h3>📢 Company Announcements</h3>
+          <div className="kf-news"><b>New fertilizer stock available</b><p>DAP and CAN stock has been received.</p></div>
+          <div className="kf-news"><b>Farmers training program</b><p>Modern farming techniques training scheduled.</p></div>
+          <div className="kf-news"><b>Payment reminder</b><p>Please clear pending payments on time.</p></div>
+        </div>
       </div>
 
-
-      {showReport && (
-        <div className="modal-overlay">
-          <div className="report-popup">
-            <div className="popup-header">
-              <h3>Sales Report — {quarterData.period}</h3>
-              <button className="close-btn" onClick={() => setShowReport(false)}>×</button>
-            </div>
-
-            <div className="report-grid">
-              <div><span>Customers</span><b>{quarterData.customers.toLocaleString()}</b></div>
-              <div><span>Leads</span><b>{quarterData.leads.toLocaleString()}</b></div>
-              <div><span>Revenue</span><b>KES {quarterData.revenue.toLocaleString()}</b></div>
-              <div><span>Orders</span><b>{quarterData.orders.toLocaleString()}</b></div>
-              <div><span>Products</span><b>{quarterData.products.toLocaleString()}</b></div>
-              <div><span>Stock Value</span><b>KES {Number(quarterData.stockValue || 0).toLocaleString()}</b></div>
-              <div><span>Low Stock</span><b>{quarterData.lowStock}</b></div>
-              <div><span>Conversion</span><b>{quarterData.conversion}%</b></div>
-            </div>
-
-            <div className="popup-actions">
-              <button className="secondary-btn" onClick={() => setShowReport(false)}>Close</button>
-              <button className="primary-btn" onClick={printReport}>Print Report</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="kf-footer">
+        <strong>KIAMBU FERTILIZERS COMPANY LIMITED</strong>
+        <span>THE FARMER’S FRIEND · ESTABLISHED IN 1969</span>
+      </div>
 
     </section>
   );

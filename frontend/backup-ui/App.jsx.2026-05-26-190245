@@ -13,7 +13,6 @@ import CompanySwitcher from './pages/CompanySwitcher.jsx';
 import Subscription from './pages/Subscription.jsx';
 import Settings from './pages/Settings.jsx';
 import './styles/main.css';
-import kiambuLogo from './assets/kiambu-logo.jpeg';
 
 function AuthScreen({ onLogin }) {
   const [mode, setMode] = useState('login');
@@ -50,8 +49,9 @@ function AuthScreen({ onLogin }) {
   return (
     <div className="auth-page">
       <div className="auth-left">
-        <div className="auth-brand auth-brand-real">
-          <img src={kiambuLogo} alt="Kiambu Fertilizers Logo" />
+        <div className="auth-brand">
+          <div>K</div>
+          <span>Kiambu CRM</span>
         </div>
 
         <h1>{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h1>
@@ -88,9 +88,7 @@ function AuthScreen({ onLogin }) {
       </div>
 
       <div className="auth-right">
-        <div className="auth-orb-image">
-          <img src={kiambuLogo} alt="Kiambu Fertilizers Logo" />
-        </div>
+        <div className="auth-orb">⚙️</div>
         <h2>Business clarity for ambitious teams.</h2>
         <p>Run CRM, inventory, sales, receipts and communication from one command center.</p>
       </div>

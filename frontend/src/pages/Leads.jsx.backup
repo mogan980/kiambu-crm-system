@@ -1,0 +1,256 @@
+import React, { useMemo, useState } from 'react';
+import api from '../services/api';
+
+export default function Leads({ user }) {
+  const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState('All');
+  const [repFilter, setRepFilter] = useState('All');
+  const [showAddLead, setShowAddLead] = useState(false);
+  const defaultLeads = [
+    ['Brian Mwangi', 'brian@safaricom.co.ke', 'Safaricom Ltd', 'Negotiation', 'KES 850K', '92', 'Sarah K.'],
+    ['Alice Njoroge', 'alice@kcb.co.ke', 'KCB Group', 'Proposal', 'KES 420K', '78', 'Mike O.'],
+    ['James Kariuki', 'j.kariuki@kplc.co.ke', 'KPLC', 'Qualified', 'KES 200K', '65', 'Sarah K.']
+  ];
+
+  const [leadList, setLeadList] = useState(() => {
+    return JSON.parse(localStorage.getItem('crm_leads') || 'null') || defaultLeads;
+  });
+  const [newLead, setNewLead] = useState({
+    name: '',
+    email: '',
+    company: '',
+    stage: 'Qualified',
+    value: '',
+    score: '',
+    rep: ''
+  });
+
+  const leads = leadList;
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      const text = lead.join(' ').toLowerCase();
+      return (
+        text.includes(search.toLowerCase()) &&
+        (stageFilter === 'All' || lead[3] === stageFilter) &&
+        (repFilter === 'All' || lead[6] === repFilter)
+      );
+    });
+  }, [search, stageFilter, repFilter]);
+
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+      const res = await api.post('/leads/import', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      alert(`Successfully imported ${res.data.count || 0} leads`);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('Import failed. Backend route /api/leads/import may not be ready yet.');
+    }
+  };
+
+  const saveLead = () => {
+    if (!newLead.name || !newLead.email || !newLead.company) {
+      alert('Fill name, email and company');
+      return;
+    }
+
+    const updatedLeads = [
+      [
+        newLead.name,
+        newLead.email,
+        newLead.company,
+        newLead.stage,
+        newLead.value || 'KES 0',
+        newLead.score || '50',
+        newLead.rep || 'Admin'
+      ],
+      ...leadList
+    ];
+
+    setLeadList(updatedLeads);
+    localStorage.setItem('crm_leads', JSON.stringify(updatedLeads));
+
+    setNewLead({
+      name: '',
+      email: '',
+      company: '',
+      stage: 'Qualified',
+      value: '',
+      score: '',
+      rep: ''
+    });
+
+    setShowAddLead(false);
+  };
+
+  const stageClass = stage =>
+    stage === 'Negotiation' ? 'stage negotiation' :
+    stage === 'Proposal' ? 'stage proposal' :
+    'stage qualified';
+
+  return (
+    <section className="lead-crm-page">
+
+      <div className="crm-leads-header">
+        <div>
+          <h2>CRM & Leads</h2>
+          <p>{filteredLeads.length} visible leads · KES 4.8M pipeline</p>
+        </div>
+
+        <div className="leads-actions">
+          <input
+            type="file"
+            id="leadCsvUpload"
+            accept=".csv,.xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
+
+          <button
+            className="import-btn"
+            onClick={() => document.getElementById('leadCsvUpload').click()}
+          >
+            Import CSV
+          </button>
+
+          <button className="import-btn" onClick={() => setShowAddLead(true)}>+ Add Lead</button>
+        </div>
+      </div>
+
+      <div className="lead-stats-grid">
+        <div className="lead-stat blue"><p>TOTAL LEADS</p><h3>{filteredLeads.length}</h3><span>↑ filtered result</span></div>
+        <div className="lead-stat cyan"><p>CONVERSION RATE</p><h3>23%</h3><span>↑ 3% MoM</span></div>
+        <div className="lead-stat green"><p>PIPELINE VALUE</p><h3>KES 4.8M</h3><small>Active deals</small></div>
+        <div className="lead-stat orange"><p>AVG DEAL SIZE</p><h3>KES 340K</h3><span>↑ 12%</span></div>
+      </div>
+
+      <div className="lead-filter-panel">
+        <div>
+          <h3>Lead Directory</h3>
+          <p>Search and filter leads by contact, company, stage, value, score or sales rep.</p>
+        </div>
+
+        <div className="lead-filter-actions">
+          <input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} />
+
+          <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
+            <option>All</option>
+            <option>Negotiation</option>
+            <option>Proposal</option>
+            <option>New</option>
+                <option>Qualified</option>
+          </select>
+
+          <select value={repFilter} onChange={e => setRepFilter(e.target.value)}>
+            <option>All</option>
+            <option>Sarah K.</option>
+            <option>Mike O.</option>
+            {user?.name && <option>{user.name}</option>}
+          </select>
+        </div>
+      </div>
+
+      <div className="lead-table-card">
+        <table className="crm-leads-table">
+          <thead>
+            <tr>
+              <th>CONTACT</th>
+              <th>COMPANY</th>
+              <th>STAGE</th>
+              <th>VALUE</th>
+              <th>AI SCORE</th>
+              <th>REP</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredLeads.map((lead, i) => (
+              <tr key={i}>
+                <td><strong>{lead[0]}</strong><small>{lead[1]}</small></td>
+                <td>{lead[2]}</td>
+                <td><span className={stageClass(lead[3])}>{lead[3]}</span></td>
+                <td>{lead[4]}</td>
+                <td><b className="ai-score">{lead[5]}</b></td>
+                <td>{lead[6]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="clean-pagination">
+          <span>
+            Showing 1–10 of {filteredLeads.length} leads
+          </span>
+
+          <div className="pagination-controls">
+
+            <button className="page-btn">
+              ←
+            </button>
+
+            <button className="page-number active">
+              1
+            </button>
+
+            <button className="page-number">
+              2
+            </button>
+
+            <button className="page-number">
+              3
+            </button>
+
+            <button className="page-btn">
+              →
+            </button>
+
+          </div>
+        </div>
+
+      </div>
+
+    
+      {showAddLead && (
+        <div className="modal-overlay">
+          <div className="customer-popup">
+            <div className="popup-header">
+              <h3>Add New Lead</h3>
+              <button className="close-btn" onClick={() => setShowAddLead(false)}>×</button>
+            </div>
+
+            <form className="popup-form">
+              <input placeholder="Contact Name" value={newLead.name} onChange={e => setNewLead({...newLead, name:e.target.value})} />
+              <input placeholder="Email Address" value={newLead.email} onChange={e => setNewLead({...newLead, email:e.target.value})} />
+              <input placeholder="Company Name" value={newLead.company} onChange={e => setNewLead({...newLead, company:e.target.value})} />
+              <input placeholder="Deal Value e.g KES 50K" value={newLead.value} onChange={e => setNewLead({...newLead, value:e.target.value})} />
+              <input placeholder="AI Score e.g 75" value={newLead.score} onChange={e => setNewLead({...newLead, score:e.target.value})} />
+              <input placeholder="Sales Rep" value={newLead.rep} onChange={e => setNewLead({...newLead, rep:e.target.value})} />
+
+              <select value={newLead.stage} onChange={e => setNewLead({...newLead, stage:e.target.value})}>
+                <option>New</option>
+                <option>Qualified</option>
+                <option>Proposal</option>
+                <option>Negotiation</option>
+              </select>
+
+              <div className="popup-actions">
+                <button type="button" className="secondary-btn" onClick={() => setShowAddLead(false)}>Cancel</button>
+                <button type="button" className="primary-btn" onClick={saveLead}>Save Lead</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </section>
+  );
+}

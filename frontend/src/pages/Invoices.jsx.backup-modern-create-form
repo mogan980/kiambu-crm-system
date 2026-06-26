@@ -1,0 +1,349 @@
+import React, { useMemo, useState } from 'react';
+import kiambuLogo from '../assets/kiambu-logo.jpeg';
+
+export default function Invoices() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [page, setPage] = useState(1);
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const perPage = 10;
+
+  const [invoices, setInvoices] = useState(() => {
+    return JSON.parse(localStorage.getItem('crm_invoices') || 'null') || [
+      ['INV-001', 'John Kamau', 'john@email.com', 'KES 5,000', '2026-05-18', 'Paid'],
+      ['INV-002', 'Mary Njeri', 'mary@email.com', 'KES 1,750', '2026-05-18', 'Pending'],
+      ['INV-003', 'Agrovet Kiambu', 'sales@agrovet.co.ke', 'KES 32,000', '2026-05-17', 'Overdue']
+    ];
+  });
+
+  const [form, setForm] = useState({
+    customer: '',
+    email: '',
+    amount: '',
+    date: new Date().toISOString().slice(0, 10),
+    status: 'Pending'
+  });
+
+  const saveInvoices = (data) => {
+    setInvoices(data);
+    localStorage.setItem('crm_invoices', JSON.stringify(data));
+  };
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv =>
+      inv.join(' ').toLowerCase().includes(search.toLowerCase()) &&
+      (statusFilter === 'All' || inv[5] === statusFilter)
+    );
+  }, [invoices, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / perPage));
+  const paginated = filteredInvoices.slice((page - 1) * perPage, page * perPage);
+
+  const badgeClass = s =>
+    s === 'Paid' ? 'status success' :
+    s === 'Pending' ? 'status warning' :
+    'status danger';
+
+  const createInvoice = () => {
+    if (!form.customer || !form.email || !form.amount) {
+      alert('Fill customer, email and amount');
+      return;
+    }
+
+    const invoice = [
+      `INV-${String(invoices.length + 1).padStart(3, '0')}`,
+      form.customer,
+      form.email,
+      form.amount.startsWith('KES') ? form.amount : `KES ${form.amount}`,
+      form.date,
+      form.status
+    ];
+
+    saveInvoices([invoice, ...invoices]);
+    setShowCreate(false);
+    setForm({
+      customer: '',
+      email: '',
+      amount: '',
+      date: new Date().toISOString().slice(0, 10),
+      status: 'Pending'
+    });
+  };
+
+  const markAsPaid = (inv) => {
+    const updated = invoices.map(item =>
+      item[0] === inv[0] ? [...item.slice(0, 5), 'Paid'] : item
+    );
+
+    saveInvoices(updated);
+    alert(`${inv[0]} marked as Paid`);
+  };
+
+  const undoPaid = (inv) => {
+    const updated = invoices.map(item =>
+      item[0] === inv[0] ? [...item.slice(0, 5), 'Pending'] : item
+    );
+
+    saveInvoices(updated);
+    alert(`${inv[0]} changed back to Pending`);
+  };
+
+  const printInvoice = (inv) => {
+    const amountNumber = Number(String(inv[3]).replace(/KES/gi, '').replace(/,/g, '').trim()) || 0;
+    const vatRate = 0.16;
+    const subtotal = Math.round(amountNumber / (1 + vatRate));
+    const vat = amountNumber - subtotal;
+    const generatedAt = new Date().toLocaleString('en-KE');
+
+    const html = `
+      <html>
+      <head>
+        <title>${inv[0]}</title>
+        <style>
+          @page{size:A4;margin:10mm}
+          *{box-sizing:border-box}
+          body{font-family:Arial,sans-serif;margin:0;background:#f6faf4;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+          .doc{width:100%;max-width:760px;margin:auto;background:white;border-radius:18px;padding:22px;border:1px solid #dce8d7;position:relative;overflow:hidden}
+          .watermark{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);font-size:82px;font-weight:900;color:#15803d;opacity:0.075;letter-spacing:6px;z-index:0;pointer-events:none;white-space:nowrap}
+          .doc > *{position:relative;z-index:2}
+          .top{text-align:center;border-bottom:2px solid #2f6f27;padding-bottom:10px;margin-bottom:12px}
+          .doc-logo{width:72px;height:72px;object-fit:contain;border-radius:16px;margin:0 auto 8px;display:block}
+          h1{color:#2f6f27;margin:4px 0;font-size:20px;line-height:1.2}
+          h3{color:#6b3b2a;margin:0 0 8px;font-size:15px}
+          .generated{
+            margin-top:14px;
+            text-align:center;
+            color:#66746a;
+            font-size:12px;
+            font-weight:700;
+            border-top:1px dashed #dce8d7;
+            padding-top:10px;
+          }
+          .details{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+          .box{border:1px solid #edf1ea;border-radius:12px;padding:8px}
+          .box small{display:block;color:#66746a;margin-bottom:5px}
+          table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+          th{background:#eef6ec;color:#185c22;text-align:left;padding:8px}
+          td{padding:8px;border-bottom:1px solid #edf1ea}
+          .totals{margin-top:12px;margin-left:auto;width:260px;font-size:13px}
+          .row{display:flex;justify-content:space-between;border-bottom:1px solid #edf1ea;padding:7px 0}
+          .grand{font-size:18px;color:#2f6f27;font-weight:900}
+          .thanks{text-align:center;margin-top:14px;color:#6b3b2a;font-weight:bold;font-size:13px}
+        </style>
+      </head>
+      <body>
+        <div class="doc">
+          <div class="watermark">INVOICE</div>
+
+          <div class="top">
+            <img src="${kiambuLogo}" class="doc-logo" />
+            <h1>KIAMBU FERTILIZERS COMPANY LIMITED</h1>
+            <h3>THE FARMER’S FRIEND · ESTABLISHED IN 1969</h3>
+            <p>Customer Invoice</p>
+          </div>
+
+
+          <div class="details">
+            <div class="box"><small>Invoice No.</small><b>${inv[0]}</b></div>
+            <div class="box"><small>Invoice Date</small><b>${inv[4]}</b></div>
+            <div class="box"><small>Customer</small><b>${inv[1]}</b></div>
+            <div class="box"><small>Email</small><b>${inv[2]}</b></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Fertilizer / Agro Product</td>
+                <td>1</td>
+                <td>KES ${subtotal.toLocaleString()}</td>
+                <td>KES ${subtotal.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="row"><span>Subtotal</span><b>KES ${subtotal.toLocaleString()}</b></div>
+            <div class="row"><span>VAT 16%</span><b>KES ${vat.toLocaleString()}</b></div>
+            <div class="row grand"><span>Total</span><b>KES ${amountNumber.toLocaleString()}</b></div>
+          </div>
+
+          <p class="thanks">Thank you for choosing Kiambu Fertilizers.</p>
+
+          <div class="generated">
+            Generated Date & Time: ${generatedAt}
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 500);
+  };
+
+  return (
+    <section>
+      <div className="page-header premium-header">
+        <div>
+          <h2>Invoices</h2>
+          <p>Create, track, print and manage customer invoices professionally.</p>
+        </div>
+        <button className="green-btn" onClick={() => setShowCreate(true)}>+ Create Invoice</button>
+      </div>
+
+      <div className="cards">
+        <div className="card premium-card"><p>Total Invoices</p><h3>{invoices.length}</h3></div>
+        <div className="card premium-card"><p>Paid</p><h3>{invoices.filter(i => i[5] === 'Paid').length}</h3></div>
+        <div className="card premium-card"><p>Pending</p><h3>{invoices.filter(i => i[5] === 'Pending').length}</h3></div>
+        <div className="card premium-card"><p>Overdue</p><h3>{invoices.filter(i => i[5] === 'Overdue').length}</h3></div>
+      </div>
+
+      <div className="panel">
+        <div className="table-toolbar">
+          <div>
+            <h3>Recent Invoices</h3>
+            <p>Search, filter, view and print invoices.</p>
+          </div>
+
+          <div className="toolbar-actions">
+            <input className="search-input" placeholder="Search invoice..." value={search} onChange={e => setSearch(e.target.value)} />
+            <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option>All</option>
+              <option>Paid</option>
+              <option>Pending</option>
+              <option>Overdue</option>
+            </select>
+            <button className="ghost-btn" onClick={() => window.print()}>Print</button>
+          </div>
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Invoice No.</th>
+              <th>Customer</th>
+              <th>Email</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {paginated.map(inv => (
+              <tr key={inv[0]}>
+                <td><strong>{inv[0]}</strong></td>
+                <td>{inv[1]}</td>
+                <td>{inv[2]}</td>
+                <td>{inv[3]}</td>
+                <td>{inv[4]}</td>
+                <td><span className={badgeClass(inv[5])}>{inv[5]}</span></td>
+                <td>
+                  <div className="customer-action-buttons">
+                    <button onClick={() => setSelectedInvoice(inv)}>View</button>
+                    <button onClick={() => printInvoice(inv)}>Print</button>
+                    {inv[5] === 'Paid' ? (
+                      <button className="undo-paid-btn" onClick={() => undoPaid(inv)}>Undo Paid</button>
+                    ) : (
+                      <button className="receipt-btn" onClick={() => markAsPaid(inv)}>Mark Paid</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="clean-pagination">
+          <span>Showing {paginated.length ? ((page - 1) * perPage) + 1 : 0}–{Math.min(page * perPage, filteredInvoices.length)} of {filteredInvoices.length} invoices</span>
+          <div className="pagination-controls">
+            <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+            <button className="page-number active">{page}</button>
+            <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>→</button>
+          </div>
+        </div>
+      </div>
+
+      {showCreate && (
+        <div className="modal-overlay">
+          <div className="customer-popup">
+            <div className="popup-header">
+              <h3>Create Invoice</h3>
+              <button className="close-btn" onClick={() => setShowCreate(false)}>×</button>
+            </div>
+
+            <form className="popup-form">
+              <input placeholder="Customer Name" value={form.customer} onChange={e => setForm({...form, customer:e.target.value})} />
+              <input placeholder="Customer Email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} />
+              <input placeholder="Amount e.g 5000" value={form.amount} onChange={e => setForm({...form, amount:e.target.value})} />
+              <input type="date" value={form.date} onChange={e => setForm({...form, date:e.target.value})} />
+              <select value={form.status} onChange={e => setForm({...form, status:e.target.value})}>
+                <option>Pending</option>
+                <option>Paid</option>
+                <option>Overdue</option>
+              </select>
+
+              <div className="popup-actions">
+                <button type="button" className="secondary-btn" onClick={() => setShowCreate(false)}>Cancel</button>
+                <button type="button" className="primary-btn" onClick={createInvoice}>Save Invoice</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {selectedInvoice && (
+        <div className="modal-overlay">
+          <div className="customer-popup">
+            <div className="popup-header">
+              <h3>Invoice Details</h3>
+              <button className="close-btn" onClick={() => setSelectedInvoice(null)}>×</button>
+            </div>
+
+            <div className="receipt-preview">
+              <h2>{selectedInvoice[0]}</h2>
+              <p><b>Customer:</b> {selectedInvoice[1]}</p>
+              <p><b>Email:</b> {selectedInvoice[2]}</p>
+              <p><b>Amount:</b> {selectedInvoice[3]}</p>
+              <p><b>Date:</b> {selectedInvoice[4]}</p>
+              <p><b>Status:</b> {selectedInvoice[5]}</p>
+            </div>
+
+            <div className="popup-actions">
+              <button className="secondary-btn" onClick={() => setSelectedInvoice(null)}>Close</button>
+              <button className="primary-btn" onClick={() => printInvoice(selectedInvoice)}>Print</button>
+              {selectedInvoice[5] === 'Paid' ? (
+                <button className="secondary-btn" onClick={() => {
+                  undoPaid(selectedInvoice);
+                  setSelectedInvoice(null);
+                }}>Undo Paid</button>
+              ) : (
+                <button className="primary-btn" onClick={() => {
+                  markAsPaid(selectedInvoice);
+                  setSelectedInvoice(null);
+                }}>Mark Paid</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

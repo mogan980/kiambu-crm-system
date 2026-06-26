@@ -17,9 +17,6 @@ export default function Leads({ user }) {
   const [repFilter, setRepFilter] = useState('All');
   const [showAddLead, setShowAddLead] = useState(false);
   const [editingLeadIndex, setEditingLeadIndex] = useState(null);
-  const [customerSource, setCustomerSource] = useState('manual');
-
-  const savedCustomers = JSON.parse(localStorage.getItem('crm_customers') || '[]');
 
   const [newLead, setNewLead] = useState({
     name: '',
@@ -193,7 +190,6 @@ export default function Leads({ user }) {
             onClick={() => {
               setEditingLeadIndex(null);
               resetLeadForm();
-              setCustomerSource('manual');
               setShowAddLead(true);
             }}
           >
@@ -284,59 +280,9 @@ export default function Leads({ user }) {
             </div>
 
             <form className="popup-form">
-              <select
-                value={customerSource}
-                onChange={e => {
-                  setCustomerSource(e.target.value);
-                  setNewLead({...newLead, name:'', email:'', company:''});
-                }}
-              >
-                <option value="manual">Enter Customer Manually</option>
-                <option value="existing">Pick From Customers List</option>
-              </select>
-
-              {customerSource === 'existing' && (
-                <select
-                  onChange={e => {
-                    const selected = savedCustomers.find(c => c[0] === e.target.value);
-
-                    if (selected) {
-                      setNewLead({
-                        ...newLead,
-                        name: selected[1],
-                        email: selected[3],
-                        company: selected[5] || selected[4] || 'Customer'
-                      });
-                    }
-                  }}
-                >
-                  <option value="">Select Existing Customer</option>
-                  {savedCustomers.map(c => (
-                    <option key={c[0]} value={c[0]}>
-                      {c[1]} • {c[2]} • {c[5]}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <input
-                placeholder="Customer / Contact Name"
-                value={newLead.name}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, name:e.target.value})}
-              />
-              <input
-                placeholder="Email Address"
-                value={newLead.email}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, email:e.target.value})}
-              />
-              <input
-                placeholder="Company / Customer Type"
-                value={newLead.company}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, company:e.target.value})}
-              />
+              <input placeholder="Contact Name" value={newLead.name} onChange={e => setNewLead({...newLead, name:e.target.value})} />
+              <input placeholder="Email Address" value={newLead.email} onChange={e => setNewLead({...newLead, email:e.target.value})} />
+              <input placeholder="Company Name" value={newLead.company} onChange={e => setNewLead({...newLead, company:e.target.value})} />
 
               <input
                 placeholder="Order Value e.g 50000, KES 50K, KES 1.2M"

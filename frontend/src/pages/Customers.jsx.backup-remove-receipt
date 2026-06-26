@@ -27,7 +27,7 @@ export default function Customers() {
     status: 'Pending'
   });
 
-  const perPage = 3;
+  const perPage = 10;
 
   useEffect(() => {
     localStorage.setItem('crm_customers', JSON.stringify(customers));
@@ -137,6 +137,146 @@ export default function Customers() {
     win.document.close();
   };
 
+  const printReceipt = (c) => {
+    const amountNumber = Number(String(c[6]).replace(/KES/gi, '').replace(/,/g, '').trim()) || 0;
+    const vatRate = 0.16;
+    const subtotal = Math.round(amountNumber / (1 + vatRate));
+    const vat = amountNumber - subtotal;
+
+    const productName = c[8] || 'Fertilizer / Agro Product';
+    const quantity = c[9] || 1;
+    const unitPrice = Math.round(subtotal / quantity);
+
+    const html = `
+      <html>
+      <head>
+        <title>${c[0]} Receipt</title>
+        <style>
+          @page{
+            size:A4;
+            margin:10mm;
+          }
+
+          *{
+            box-sizing:border-box;
+          }
+
+          body{
+            font-family:Arial,sans-serif;
+            padding:0;
+            margin:0;
+            background:#f6faf4;
+            color:#111;
+            -webkit-print-color-adjust:exact;
+            print-color-adjust:exact;
+          }
+
+          .receipt{
+            width:100%;
+            max-width:760px;
+            margin:auto;
+            background:white;
+            border-radius:18px;
+            padding:22px;
+            border:1px solid #dce8d7;
+            overflow:hidden;
+            page-break-inside:avoid;
+            position:relative;
+          }
+
+          .watermark{
+            position:absolute;
+            top:45%;
+            left:50%;
+            transform:translate(-50%,-50%) rotate(-32deg);
+            font-size:120px;
+            font-weight:900;
+            color:#15803d;
+            opacity:0.08;
+            letter-spacing:12px;
+            z-index:0;
+            pointer-events:none;
+            white-space:nowrap;
+          }
+
+          .receipt > *{
+            position:relative;
+            z-index:2;
+          }
+          .top{text-align:center;border-bottom:2px solid #2f6f27;padding-bottom:10px;margin-bottom:12px}
+          .doc-logo{width:72px;height:72px;object-fit:contain;border-radius:16px;margin:0 auto 8px;display:block}
+          h1{color:#2f6f27;margin:4px 0;font-size:20px;line-height:1.2}
+          h3{color:#6b3b2a;margin:0 0 8px;font-size:15px}
+          .paid{display:inline-block;background:#dcfce7;color:#166534;padding:6px 14px;border-radius:999px;font-weight:bold;font-size:12px}
+          .details{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+          .box{border:1px solid #edf1ea;border-radius:12px;padding:8px}
+          .box small{display:block;color:#66746a;margin-bottom:5px}
+          table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+          th{background:#eef6ec;color:#185c22;text-align:left;padding:8px}
+          td{padding:8px;border-bottom:1px solid #edf1ea}
+          .totals{margin-top:12px;margin-left:auto;width:260px;font-size:13px}
+          .row{display:flex;justify-content:space-between;border-bottom:1px solid #edf1ea;padding:7px 0}
+          .grand{font-size:18px;color:#2f6f27;font-weight:900}
+          .thanks{text-align:center;margin-top:14px;color:#6b3b2a;font-weight:bold;font-size:13px}
+        </style>
+      </head>
+      <body>
+        <div class="receipt">
+            <div class="watermark">PAID</div>
+          <div class="top">
+            <img src="${kiambuLogo}" class="doc-logo" />
+            <h1>KIAMBU FERTILIZERS COMPANY LIMITED</h1>
+            <h3>OFFICIAL PAYMENT RECEIPT</h3>
+            <span class="paid">${c[7]}</span>
+          </div>
+
+          <div class="details">
+            <div class="box"><small>Receipt No.</small><b>RCT-${Date.now()}</b></div>
+            <div class="box"><small>Date</small><b>${new Date().toLocaleString()}</b></div>
+            <div class="box"><small>Customer ID</small><b>${c[0]}</b></div>
+            <div class="box"><small>Customer</small><b>${c[1]}</b></div>
+            <div class="box"><small>Phone</small><b>${c[2]}</b></div>
+            <div class="box"><small>Email</small><b>${c[3]}</b></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${productName}</td>
+                <td>${quantity}</td>
+                <td>KES ${unitPrice.toLocaleString()}</td>
+                <td>KES ${subtotal.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="row"><span>Subtotal</span><b>KES ${subtotal.toLocaleString()}</b></div>
+            <div class="row"><span>VAT 16%</span><b>KES ${vat.toLocaleString()}</b></div>
+            <div class="row grand"><span>Total Paid</span><b>KES ${amountNumber.toLocaleString()}</b></div>
+          </div>
+
+          <p class="thanks">Thank you for choosing Kiambu Fertilizers.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  };
+
   return (
     <section>
       <div className="page-header premium-header">
@@ -193,6 +333,8 @@ export default function Customers() {
               <th>Email</th>
               <th>County</th>
               <th>Type</th>
+              <th>Total Paid</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -206,9 +348,24 @@ export default function Customers() {
                 <td>{c[3]}</td>
                 <td>{c[4]}</td>
                 <td>{c[5]}</td>
+                <td>{c[6]}</td>
+                <td>
+                  <span className={c[7] === 'Paid' ? 'status success' : 'status warning'}>
+                    {c[7]}
+                  </span>
+                </td>
                 <td>
                   <div className="customer-action-buttons">
                     <button onClick={() => openCustomerPdf(c)}>View</button>
+
+                    {c[7] === 'Paid' ? (
+                      <>
+                        <button onClick={() => printReceipt(c)}>Print</button>
+                        <button className="receipt-btn" onClick={() => printReceipt(c)}>Receipt</button>
+                      </>
+                    ) : (
+                      <span className="action-muted">Not Paid</span>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -223,27 +380,9 @@ export default function Customers() {
           </span>
 
           <div className="pagination-controls">
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page <= 1}
-              onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            >
-              ← Previous
-            </button>
-
-            <button type="button" className="page-number active">
-              Page {page} of {totalPages}
-            </button>
-
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-            >
-              Next →
-            </button>
+            <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+            <button className="page-number active">{page}</button>
+            <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>→</button>
           </div>
         </div>
       </div>

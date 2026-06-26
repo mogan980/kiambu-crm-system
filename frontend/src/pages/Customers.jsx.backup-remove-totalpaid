@@ -27,7 +27,7 @@ export default function Customers() {
     status: 'Pending'
   });
 
-  const perPage = 3;
+  const perPage = 10;
 
   useEffect(() => {
     localStorage.setItem('crm_customers', JSON.stringify(customers));
@@ -193,6 +193,7 @@ export default function Customers() {
               <th>Email</th>
               <th>County</th>
               <th>Type</th>
+              <th>Total Paid</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -206,6 +207,7 @@ export default function Customers() {
                 <td>{c[3]}</td>
                 <td>{c[4]}</td>
                 <td>{c[5]}</td>
+                <td>{c[6]}</td>
                 <td>
                   <div className="customer-action-buttons">
                     <button onClick={() => openCustomerPdf(c)}>View</button>
@@ -223,27 +225,9 @@ export default function Customers() {
           </span>
 
           <div className="pagination-controls">
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page <= 1}
-              onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            >
-              ← Previous
-            </button>
-
-            <button type="button" className="page-number active">
-              Page {page} of {totalPages}
-            </button>
-
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-            >
-              Next →
-            </button>
+            <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+            <button className="page-number active">{page}</button>
+            <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>→</button>
           </div>
         </div>
       </div>

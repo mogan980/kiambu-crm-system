@@ -1,0 +1,128 @@
+import kiambuLogo from '../assets/kiambu-logo.jpeg';
+import React, { useMemo, useState } from 'react';
+
+export default function Receipts() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  const receipts = [
+    ['RCT-001', 'INV-001', 'John Kamau', 'john@email.com', 'KES 5,000', 'Paid', '2026-05-18'],
+    ['RCT-002', 'INV-008', 'Peter Otieno', 'peter@email.com', 'KES 15,000', 'Paid', '2026-05-12'],
+    ['RCT-003', 'INV-010', 'David Mutua', 'david@email.com', 'KES 3,900', 'Pending', '2026-05-10']
+  ];
+
+  const filtered = useMemo(() => {
+    return receipts.filter(r => {
+      const text = r.join(' ').toLowerCase();
+      return text.includes(search.toLowerCase()) && (statusFilter === 'All' || r[5] === statusFilter);
+    });
+  }, [search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const printReceipt = (r) => {
+    const html = `
+      <html><body style="font-family:Arial;padding:30px">
+      <img src="${kiambuLogo}" class="doc-logo" /><h1>Kiambu Fertilizers Company Limited</h1>
+      <h3>Official Payment Receipt</h3>
+      <p><b>Receipt:</b> ${r[0]}</p>
+      <p><b>Invoice:</b> ${r[1]}</p>
+      <p><b>Customer:</b> ${r[2]}</p>
+      <p><b>Email:</b> ${r[3]}</p>
+      <p><b>Amount:</b> ${r[4]}</p>
+      <p><b>Status:</b> ${r[5]}</p>
+      <p><b>Date:</b> ${r[6]}</p>
+      </body></html>
+    `;
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.print();
+  };
+
+  const sendReceipt = (r) => {
+    const subject = `Payment Receipt ${r[0]}`;
+    const body = `Hello ${r[2]},%0D%0A%0D%0AThank you for your payment.%0D%0AReceipt: ${r[0]}%0D%0AInvoice: ${r[1]}%0D%0AAmount: ${r[4]}%0D%0AStatus: ${r[5]}%0D%0A%0D%0AKiambu Fertilizers Company Limited`;
+    window.location.href = `mailto:${r[3]}?subject=${encodeURIComponent(subject)}&body=${body}`;
+  };
+
+  return (
+    <section>
+      <div className="page-header premium-header">
+        <div>
+          <h2>Receipts</h2>
+          <p>Receipts are only available for paid records.</p>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="table-toolbar">
+          <div>
+            <h3>Receipt Center</h3>
+            <p>Search, filter, print and send receipts.</p>
+          </div>
+
+          <div className="toolbar-actions">
+            <input className="search-input" placeholder="Search receipts..." value={search} onChange={e => setSearch(e.target.value)} />
+            <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option>All</option>
+              <option>Paid</option>
+              <option>Pending</option>
+              <option>Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Receipt</th><th>Invoice</th><th>Customer</th><th>Email</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map(r => (
+              <tr key={r[0]}>
+                <td><strong>{r[0]}</strong></td>
+                <td>{r[1]}</td>
+                <td>{r[2]}</td>
+                <td>{r[3]}</td>
+                <td>{r[4]}</td>
+                <td><span className={r[5] === 'Paid' ? 'status success' : 'status warning'}>{r[5]}</span></td>
+                <td>{r[6]}</td>
+                <td>
+                  <div className="customer-action-buttons">
+                    <button onClick={() => alert(`${r[0]} - ${r[2]} - ${r[4]}`)}>View</button>
+                    {r[5] === 'Paid' && (
+                      <>
+                        {r[5] === 'Paid' ? (
+                        <button onClick={() => printReceipt(r)}>Print</button>
+                      ) : (
+                        <span className="action-muted">Not Paid</span>
+                      )}
+                        {r[5] === 'Paid' && (
+                        <button className="receipt-btn" onClick={() => sendReceipt(r)}>Send Receipt</button>
+                      )}
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="clean-pagination">
+          <span>Showing {paginated.length ? ((page - 1) * perPage) + 1 : 0}–{Math.min(page * perPage, filtered.length)} of {filtered.length} receipts</span>
+          <div className="pagination-controls">
+            <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+            <button className="page-number active">{page}</button>
+            <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>→</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

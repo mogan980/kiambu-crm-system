@@ -3,13 +3,13 @@ import api from '../services/api';
 
 export default function Leads({ user }) {
   const defaultLeads = [
-    ['Brian Mwangi', 'brian@safaricom.co.ke', 'Safaricom Ltd', 'Negotiation', 'KES 850K', 'Sarah K.'],
-    ['Alice Njoroge', 'alice@kcb.co.ke', 'KCB Group', 'Proposal', 'KES 420K', 'Mike O.'],
-    ['James Kariuki', 'j.kariuki@kplc.co.ke', 'KPLC', 'Qualified', 'KES 200K', 'Sarah K.']
+    ['Brian Mwangi', 'brian@safaricom.co.ke', 'Safaricom Ltd', 'Negotiation', 'KES 850K', '92', 'Sarah K.'],
+    ['Alice Njoroge', 'alice@kcb.co.ke', 'KCB Group', 'Proposal', 'KES 420K', '78', 'Mike O.'],
+    ['James Kariuki', 'j.kariuki@kplc.co.ke', 'KPLC', 'Qualified', 'KES 200K', '65', 'Sarah K.']
   ];
 
   const [leadList, setLeadList] = useState(() => {
-    return JSON.parse(localStorage.getItem('crm_leads_no_ai') || 'null') || defaultLeads;
+    return JSON.parse(localStorage.getItem('crm_leads') || 'null') || defaultLeads;
   });
 
   const [search, setSearch] = useState('');
@@ -17,9 +17,6 @@ export default function Leads({ user }) {
   const [repFilter, setRepFilter] = useState('All');
   const [showAddLead, setShowAddLead] = useState(false);
   const [editingLeadIndex, setEditingLeadIndex] = useState(null);
-  const [customerSource, setCustomerSource] = useState('manual');
-
-  const savedCustomers = JSON.parse(localStorage.getItem('crm_customers') || '[]');
 
   const [newLead, setNewLead] = useState({
     name: '',
@@ -27,18 +24,26 @@ export default function Leads({ user }) {
     company: '',
     stage: 'New',
     value: '',
+    score: '',
     rep: ''
   });
 
   useEffect(() => {
-    localStorage.setItem('crm_leads_no_ai', JSON.stringify(leadList));
+    localStorage.setItem('crm_leads', JSON.stringify(leadList));
   }, [leadList]);
 
   const parseMoney = (value) => {
     if (!value) return 0;
-    let clean = String(value).replace(/KES/gi, '').replace(/,/g, '').trim().toUpperCase();
+
+    let clean = String(value)
+      .replace(/KES/gi, '')
+      .replace(/,/g, '')
+      .trim()
+      .toUpperCase();
+
     if (clean.endsWith('M')) return parseFloat(clean) * 1000000;
     if (clean.endsWith('K')) return parseFloat(clean) * 1000;
+
     return Number(clean) || 0;
   };
 
@@ -54,27 +59,14 @@ export default function Leads({ user }) {
       return (
         text.includes(search.toLowerCase()) &&
         (stageFilter === 'All' || lead[3] === stageFilter) &&
-        (repFilter === 'All' || lead[5] === repFilter)
+        (repFilter === 'All' || lead[6] === repFilter)
       );
     });
   }, [leadList, search, stageFilter, repFilter]);
 
   const pipelineTotal = filteredLeads.reduce((sum, lead) => sum + parseMoney(lead[4]), 0);
   const avgDeal = filteredLeads.length ? pipelineTotal / filteredLeads.length : 0;
-  const conversionRate = filteredLeads.length
-    ? Math.round((filteredLeads.filter(l => l[3] === 'Negotiation').length / filteredLeads.length) * 100)
-    : 0;
-
-  const resetLeadForm = () => {
-    setNewLead({
-      name: '',
-      email: '',
-      company: '',
-      stage: 'New',
-      value: '',
-      rep: ''
-    });
-  };
+  const conversionRate = filteredLeads.length ? Math.round((filteredLeads.filter(l => l[3] === 'Negotiation').length / filteredLeads.length) * 100) : 0;
 
   const saveLead = () => {
     if (!newLead.name || !newLead.email || !newLead.company || !newLead.value) {
@@ -88,14 +80,25 @@ export default function Leads({ user }) {
       newLead.company,
       newLead.stage,
       newLead.value.startsWith('KES') ? newLead.value : `KES ${newLead.value}`,
+      newLead.score || '50',
       newLead.rep || user?.name || 'Admin'
     ];
 
     const updatedLeads = [lead, ...leadList];
-    setLeadList(updatedLeads);
-    localStorage.setItem('crm_leads_no_ai', JSON.stringify(updatedLeads));
 
-    resetLeadForm();
+    setLeadList(updatedLeads);
+    localStorage.setItem('crm_leads', JSON.stringify(updatedLeads));
+
+    setNewLead({
+      name: '',
+      email: '',
+      company: '',
+      stage: 'New',
+      value: '',
+      score: '',
+      rep: ''
+    });
+
     setSearch('');
     setStageFilter('All');
     setRepFilter('All');
@@ -112,12 +115,15 @@ export default function Leads({ user }) {
       company: lead[2],
       stage: lead[3],
       value: lead[4],
-      rep: lead[5]
+      score: lead[5],
+      rep: lead[6]
     });
     setShowAddLead(true);
   };
 
   const saveEditedLead = () => {
+    if (editingLeadIndex === null) return;
+
     const updatedLeads = leadList.map((lead, index) =>
       index === editingLeadIndex
         ? [
@@ -126,17 +132,27 @@ export default function Leads({ user }) {
             newLead.company,
             newLead.stage,
             newLead.value.startsWith('KES') ? newLead.value : `KES ${newLead.value}`,
+            newLead.score || '50',
             newLead.rep || user?.name || 'Admin'
           ]
         : lead
     );
 
     setLeadList(updatedLeads);
-    localStorage.setItem('crm_leads_no_ai', JSON.stringify(updatedLeads));
+    localStorage.setItem('crm_leads', JSON.stringify(updatedLeads));
 
     setEditingLeadIndex(null);
     setShowAddLead(false);
-    resetLeadForm();
+
+    setNewLead({
+      name: '',
+      email: '',
+      company: '',
+      stage: 'New',
+      value: '',
+      score: '',
+      rep: ''
+    });
 
     alert('Lead updated successfully');
   };
@@ -154,6 +170,7 @@ export default function Leads({ user }) {
       });
 
       alert(`Successfully imported ${res.data.count || 0} leads`);
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert('Import failed. Backend route /api/leads/import may not be ready yet.');
@@ -192,8 +209,15 @@ export default function Leads({ user }) {
             className="import-btn"
             onClick={() => {
               setEditingLeadIndex(null);
-              resetLeadForm();
-              setCustomerSource('manual');
+              setNewLead({
+                name: '',
+                email: '',
+                company: '',
+                stage: 'New',
+                value: '',
+                score: '',
+                rep: ''
+              });
               setShowAddLead(true);
             }}
           >
@@ -203,7 +227,7 @@ export default function Leads({ user }) {
       </div>
 
       <div className="lead-stats-grid">
-        <div className="lead-stat blue"><p>TOTAL LEADS</p><h3>{filteredLeads.length}</h3><span>Filtered result</span></div>
+        <div className="lead-stat blue"><p>TOTAL LEADS</p><h3>{filteredLeads.length}</h3><span>↑ filtered result</span></div>
         <div className="lead-stat cyan"><p>CONVERSION RATE</p><h3>{conversionRate}%</h3><span>Negotiation stage</span></div>
         <div className="lead-stat green"><p>PIPELINE VALUE</p><h3>{formatMoney(pipelineTotal)}</h3><small>From order values</small></div>
         <div className="lead-stat orange"><p>AVG DEAL SIZE</p><h3>{formatMoney(avgDeal)}</h3><span>Per lead</span></div>
@@ -212,7 +236,7 @@ export default function Leads({ user }) {
       <div className="lead-filter-panel">
         <div>
           <h3>Lead Directory</h3>
-          <p>Search and filter leads by contact, company, stage, order value or sales rep.</p>
+          <p>Search and filter leads by contact, company, stage, order value, score or sales rep.</p>
         </div>
 
         <div className="lead-filter-actions">
@@ -244,6 +268,7 @@ export default function Leads({ user }) {
               <th>COMPANY</th>
               <th>STAGE</th>
               <th>ORDER VALUE</th>
+              <th>AI SCORE</th>
               <th>REP</th>
               <th>ACTIONS</th>
             </tr>
@@ -256,7 +281,8 @@ export default function Leads({ user }) {
                 <td>{lead[2]}</td>
                 <td><span className={stageClass(lead[3])}>{lead[3]}</span></td>
                 <td>{lead[4]}</td>
-                <td>{lead[5]}</td>
+                <td><b className="ai-score">{lead[5]}</b></td>
+                <td>{lead[6]}</td>
                 <td>
                   <button className="lead-edit-btn" onClick={() => openEditLead(lead, leadList.indexOf(lead))}>
                     Edit
@@ -284,59 +310,9 @@ export default function Leads({ user }) {
             </div>
 
             <form className="popup-form">
-              <select
-                value={customerSource}
-                onChange={e => {
-                  setCustomerSource(e.target.value);
-                  setNewLead({...newLead, name:'', email:'', company:''});
-                }}
-              >
-                <option value="manual">Enter Customer Manually</option>
-                <option value="existing">Pick From Customers List</option>
-              </select>
-
-              {customerSource === 'existing' && (
-                <select
-                  onChange={e => {
-                    const selected = savedCustomers.find(c => c[0] === e.target.value);
-
-                    if (selected) {
-                      setNewLead({
-                        ...newLead,
-                        name: selected[1],
-                        email: selected[3],
-                        company: selected[5] || selected[4] || 'Customer'
-                      });
-                    }
-                  }}
-                >
-                  <option value="">Select Existing Customer</option>
-                  {savedCustomers.map(c => (
-                    <option key={c[0]} value={c[0]}>
-                      {c[1]} • {c[2]} • {c[5]}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <input
-                placeholder="Customer / Contact Name"
-                value={newLead.name}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, name:e.target.value})}
-              />
-              <input
-                placeholder="Email Address"
-                value={newLead.email}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, email:e.target.value})}
-              />
-              <input
-                placeholder="Company / Customer Type"
-                value={newLead.company}
-                readOnly={customerSource === 'existing'}
-                onChange={e => setNewLead({...newLead, company:e.target.value})}
-              />
+              <input placeholder="Contact Name" value={newLead.name} onChange={e => setNewLead({...newLead, name:e.target.value})} />
+              <input placeholder="Email Address" value={newLead.email} onChange={e => setNewLead({...newLead, email:e.target.value})} />
+              <input placeholder="Company Name" value={newLead.company} onChange={e => setNewLead({...newLead, company:e.target.value})} />
 
               <input
                 placeholder="Order Value e.g 50000, KES 50K, KES 1.2M"
@@ -344,6 +320,7 @@ export default function Leads({ user }) {
                 onChange={e => setNewLead({...newLead, value:e.target.value})}
               />
 
+              <input placeholder="AI Score e.g 75" value={newLead.score} onChange={e => setNewLead({...newLead, score:e.target.value})} />
               <input placeholder="Sales Rep" value={newLead.rep} onChange={e => setNewLead({...newLead, rep:e.target.value})} />
 
               <select value={newLead.stage} onChange={e => setNewLead({...newLead, stage:e.target.value})}>
